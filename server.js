@@ -5,6 +5,12 @@ const { connectDB, getDB } = require("./config/db");
 const { initializeFirebaseAdmin } = require("./config/firebase-admin");
 const { createIndexes } = require("./utils/dbHelpers");
 const requestLogger = require("./middleware/requestLogger");
+const logger = require("./utils/logger");
+const {
+  helmetConfig,
+  generalLimiter,
+  mongoSanitizeConfig,
+} = require("./middleware/security");
 require("dotenv").config();
 
 // Import Routes
@@ -92,10 +98,17 @@ app.use(cors(corsOptions));
 // Handle preflight requests explicitly (OPTIONS method)
 app.options("*", cors(corsOptions));
 
-// Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Security Middleware
+app.use(helmetConfig); // Helmet for security headers
+app.use(mongoSanitizeConfig); // Prevent NoSQL injection
+
+// Body parsing middleware (with size limits for security)
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
+
+// Apply rate limiting to all routes
+app.use(generalLimiter);
 
 // Request Logger Middleware (logs all incoming requests)
 app.use(requestLogger);
@@ -138,14 +151,19 @@ const startServer = async () => {
     // Initialize Firebase Admin
     initializeFirebaseAdmin();
 
-    // Start Express server
-    app.listen(PORT, () => {
-      console.log(`🚀 BookCourier server is running on port ${PORT}`);
-    });
+    // Start Express server only in non-Vercel environment
+    if (process.env.VERCEL !== "1") {
+      app.listen(PORT, () => {
+        logger.server(`BookCourier server is running on port ${PORT}`);
+      });
+    }
   } catch (error) {
-    console.error("Failed to start server:", error);
+    logger.error("Failed to start server:", error);
     process.exit(1);
   }
 };
 
 startServer();
+
+// Export app for Vercel serverless functions
+module.exports = app;

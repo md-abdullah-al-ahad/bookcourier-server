@@ -387,6 +387,31 @@ npm run lint
 
 This project is licensed under the MIT License.
 
+## 🚀 Deployment
+
+### Vercel Deployment
+
+This server is ready to deploy on Vercel. See the detailed deployment guide:
+
+📖 **[Vercel Deployment Guide](./docs/VERCEL_DEPLOYMENT.md)**
+
+**Quick Deploy Steps:**
+
+1. Push your code to GitHub
+2. Import project on [Vercel](https://vercel.com/new)
+3. Set environment variables in Vercel dashboard
+4. Deploy!
+
+**Required Environment Variables for Vercel:**
+
+- `MONGODB_URI` - Your MongoDB Atlas connection string
+- `DB_NAME` - Database name
+- `JWT_SECRET` - JWT secret key
+- `CLIENT_URL` - Your frontend URL
+- `FIREBASE_SERVICE_ACCOUNT` - Firebase credentials as JSON string
+
+See [VERCEL_DEPLOYMENT.md](./docs/VERCEL_DEPLOYMENT.md) for complete instructions.
+
 ## 👤 Author
 
 **Md Abdullah Al Ahad**

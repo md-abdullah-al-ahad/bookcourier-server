@@ -1,4 +1,5 @@
 const { MongoClient } = require("mongodb");
+const logger = require("../utils/logger");
 
 let dbInstance = null;
 let client = null;
@@ -33,13 +34,13 @@ const connectDB = async () => {
     // Get database instance
     dbInstance = client.db(dbName);
 
-    console.log(`✅ MongoDB connected successfully to database: ${dbName}`);
+    logger.success(`MongoDB connected successfully to database: ${dbName}`);
 
     // Verify connection
     await dbInstance.command({ ping: 1 });
-    console.log("✅ Database ping successful");
+    logger.success("Database ping successful");
   } catch (error) {
-    console.error("❌ MongoDB connection error:", error.message);
+    logger.error("MongoDB connection error:", error);
     process.exit(1);
   }
 };
@@ -62,7 +63,7 @@ const getDB = () => {
 const closeDB = async () => {
   if (client) {
     await client.close();
-    console.log("✅ MongoDB connection closed");
+    logger.success("MongoDB connection closed");
   }
 };
 

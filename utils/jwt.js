@@ -1,4 +1,5 @@
 const jwt = require("jsonwebtoken");
+const logger = require("./logger");
 
 /**
  * Generate JWT token
@@ -23,12 +24,12 @@ const generateToken = (userId, email, role) => {
 
     // Generate token with 7 days expiration
     const token = jwt.sign(payload, secret, {
-      expiresIn: process.env.JWT_EXPIRE || "7d",
+      expiresIn: process.env.JWT_EXPIRES_IN || "7d",
     });
 
     return token;
   } catch (error) {
-    console.error("❌ Error generating JWT token:", error);
+    logger.error("Error generating JWT token:", error);
     throw error;
   }
 };

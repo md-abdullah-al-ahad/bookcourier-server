@@ -6,6 +6,7 @@ const {
   checkLibrarian,
   checkAdmin,
 } = require("../middleware/checkRole");
+const { orderLimiter } = require("../middleware/security");
 const {
   placeOrder,
   getUserOrders,
@@ -24,7 +25,7 @@ const {
  * @desc    Place a new order for a book
  * @access  Protected (authenticated user)
  */
-router.post("/", verifyToken, checkUser, placeOrder);
+router.post("/", orderLimiter, verifyToken, checkUser, placeOrder);
 
 /**
  * @route   GET /api/orders/my-orders

@@ -1,6 +1,7 @@
 const { getDB } = require("../config/db");
 const COLLECTIONS = require("../config/collections");
 const { ObjectId } = require("mongodb");
+const logger = require("./logger");
 
 /**
  * Get a MongoDB collection
@@ -12,10 +13,7 @@ const getCollection = (collectionName) => {
     const db = getDB();
     return db.collection(collectionName);
   } catch (error) {
-    console.error(
-      `Error accessing collection ${collectionName}:`,
-      error.message
-    );
+    logger.error(`Error accessing collection ${collectionName}:`, error);
     throw error;
   }
 };
@@ -28,13 +26,13 @@ const getCollection = (collectionName) => {
 const createIndexes = async () => {
   try {
     const db = getDB();
-    console.log("📋 Creating database indexes...");
+    logger.db("Creating database indexes...");
 
     // Users collection indexes
     await db
       .collection(COLLECTIONS.USERS)
       .createIndex({ email: 1 }, { unique: true, name: "email_unique" });
-    console.log("✅ Users indexes created: email (unique)");
+    logger.db("Users indexes created: email (unique)");
 
     // Books collection indexes
     await db
@@ -43,7 +41,7 @@ const createIndexes = async () => {
     await db
       .collection(COLLECTIONS.BOOKS)
       .createIndex({ status: 1 }, { name: "status_index" });
-    console.log("✅ Books indexes created: librarian, status");
+    logger.db("Books indexes created: librarian, status");
 
     // Orders collection indexes
     await db
@@ -55,7 +53,7 @@ const createIndexes = async () => {
     await db
       .collection(COLLECTIONS.ORDERS)
       .createIndex({ book: 1 }, { name: "book_index" });
-    console.log("✅ Orders indexes created: user, orderStatus, book");
+    logger.db("Orders indexes created: user, orderStatus, book");
 
     // Payments collection indexes
     await db
@@ -67,7 +65,7 @@ const createIndexes = async () => {
         { paymentId: 1 },
         { unique: true, name: "paymentId_unique" }
       );
-    console.log("✅ Payments indexes created: user, paymentId (unique)");
+    logger.db("Payments indexes created: user, paymentId (unique)");
 
     // Wishlists collection indexes
     await db
@@ -76,7 +74,7 @@ const createIndexes = async () => {
         { user: 1, book: 1 },
         { unique: true, name: "user_book_unique" }
       );
-    console.log("✅ Wishlists indexes created: user+book (unique compound)");
+    logger.db("Wishlists indexes created: user+book (unique compound)");
 
     // Reviews collection indexes
     await db
@@ -85,15 +83,15 @@ const createIndexes = async () => {
         { user: 1, book: 1 },
         { unique: true, name: "user_book_unique" }
       );
-    console.log("✅ Reviews indexes created: user+book (unique compound)");
+    logger.db("Reviews indexes created: user+book (unique compound)");
 
-    console.log("🎉 All database indexes created successfully!");
+    logger.success("All database indexes created successfully!");
   } catch (error) {
     // Don't fail if indexes already exist
     if (error.code === 11000 || error.codeName === "IndexOptionsConflict") {
-      console.log("ℹ️  Indexes already exist, skipping creation");
+      logger.info("Indexes already exist, skipping creation");
     } else {
-      console.error("❌ Error creating indexes:", error.message);
+      logger.error("Error creating indexes:", error);
       throw error;
     }
   }

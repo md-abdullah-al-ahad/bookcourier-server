@@ -2,6 +2,7 @@ const { ObjectId } = require("mongodb");
 const { verifyJwtToken } = require("../utils/jwt");
 const { getCollection } = require("../utils/dbHelpers");
 const COLLECTIONS = require("../config/collections");
+const logger = require("../utils/logger");
 
 /**
  * Verify JWT token and authenticate user
@@ -80,7 +81,7 @@ const verifyJwt = async (req, res, next) => {
     // Continue to next middleware
     next();
   } catch (error) {
-    console.error("❌ JWT Authentication error:", error);
+    logger.error("JWT Authentication error:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error during authentication",

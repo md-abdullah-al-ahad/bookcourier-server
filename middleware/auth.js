@@ -1,6 +1,7 @@
 const { getAuth } = require("../config/firebase-admin");
 const { getCollection } = require("../utils/dbHelpers");
 const COLLECTIONS = require("../config/collections");
+const logger = require("../utils/logger");
 
 /**
  * Verify Firebase JWT token and authenticate user
@@ -89,7 +90,7 @@ const verifyToken = async (req, res, next) => {
 
       if (result.acknowledged) {
         user = { ...newUser, _id: result.insertedId };
-        console.log(`✅ New user created: ${email}`);
+        logger.success(`New user created: ${email}`);
       } else {
         return res.status(500).json({
           success: false,
@@ -104,7 +105,7 @@ const verifyToken = async (req, res, next) => {
     // Continue to next middleware
     next();
   } catch (error) {
-    console.error("❌ Authentication error:", error);
+    logger.error("Authentication error:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error during authentication",
