@@ -8,6 +8,7 @@ require("dotenv").config();
 
 // Import Routes
 const userRoutes = require("./routes/userRoutes");
+const bookRoutes = require("./routes/bookRoutes");
 
 const app = express();
 
@@ -42,6 +43,7 @@ app.get("/", (req, res) => {
 
 // API Routes
 app.use("/api/users", userRoutes);
+app.use("/api/books", bookRoutes);
 
 // Server
 const PORT = process.env.PORT || 5000;
