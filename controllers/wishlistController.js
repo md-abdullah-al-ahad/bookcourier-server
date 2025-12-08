@@ -1,6 +1,7 @@
 const { ObjectId } = require("mongodb");
 const { getCollection } = require("../utils/dbHelpers");
 const COLLECTIONS = require("../config/collections");
+const { successResponse, errorResponse } = require("../utils/response");
 
 /**
  * Add book to user's wishlist
@@ -13,18 +14,12 @@ const addToWishlist = async (req, res) => {
 
     // Validate bookId
     if (!bookId) {
-      return res.status(400).json({
-        success: false,
-        message: "Book ID is required",
-      });
+      return errorResponse(res, "Book ID is required", 400);
     }
 
     // Validate ObjectId format
     if (!ObjectId.isValid(bookId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid book ID format",
-      });
+      return errorResponse(res, "Invalid book ID format", 400);
     }
 
     const userId = req.user._id;
@@ -34,10 +29,7 @@ const addToWishlist = async (req, res) => {
     const book = await booksCollection.findOne({ _id: new ObjectId(bookId) });
 
     if (!book) {
-      return res.status(404).json({
-        success: false,
-        message: "Book not found",
-      });
+      return errorResponse(res, "Book not found", 404);
     }
 
     // Check if already in wishlist
@@ -48,10 +40,7 @@ const addToWishlist = async (req, res) => {
     });
 
     if (existingItem) {
-      return res.status(400).json({
-        success: false,
-        message: "Book is already in your wishlist",
-      });
+      return errorResponse(res, "Book is already in your wishlist", 400);
     }
 
     // Create wishlist document
@@ -65,27 +54,16 @@ const addToWishlist = async (req, res) => {
     const result = await wishlistsCollection.insertOne(wishlistDocument);
 
     if (!result.acknowledged) {
-      return res.status(500).json({
-        success: false,
-        message: "Failed to add book to wishlist",
-      });
+      return errorResponse(res, "Failed to add book to wishlist", 500);
     }
 
-    res.status(201).json({
-      success: true,
-      message: "Book added to wishlist successfully",
-      data: {
-        _id: result.insertedId,
-        ...wishlistDocument,
-      },
-    });
+    return successResponse(res, {
+      _id: result.insertedId,
+      ...wishlistDocument,
+    }, "Book added to wishlist successfully", 201);
   } catch (error) {
     console.error("❌ Error adding to wishlist:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to add book to wishlist",
-      error: error.message,
-    });
+    return errorResponse(res, "Failed to add book to wishlist", 500, error.message);
   }
 };
 
@@ -100,10 +78,7 @@ const removeFromWishlist = async (req, res) => {
 
     // Validate ObjectId format
     if (!ObjectId.isValid(bookId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid book ID format",
-      });
+      return errorResponse(res, "Invalid book ID format", 400);
     }
 
     const userId = req.user._id;
@@ -116,23 +91,13 @@ const removeFromWishlist = async (req, res) => {
     });
 
     if (result.deletedCount === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Book not found in wishlist",
-      });
+      return errorResponse(res, "Book not found in wishlist", 404);
     }
 
-    res.status(200).json({
-      success: true,
-      message: "Book removed from wishlist successfully",
-    });
+    return successResponse(res, null, "Book removed from wishlist successfully");
   } catch (error) {
     console.error("❌ Error removing from wishlist:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to remove book from wishlist",
-      error: error.message,
-    });
+    return errorResponse(res, "Failed to remove book from wishlist", 500, error.message);
   }
 };
 
@@ -184,18 +149,10 @@ const getUserWishlist = async (req, res) => {
       ])
       .toArray();
 
-    res.status(200).json({
-      success: true,
-      count: wishlist.length,
-      data: wishlist,
-    });
+    return successResponse(res, { wishlist, count: wishlist.length }, "User wishlist retrieved successfully");
   } catch (error) {
     console.error("❌ Error getting wishlist:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to get wishlist",
-      error: error.message,
-    });
+    return errorResponse(res, "Failed to get wishlist", 500, error.message);
   }
 };
 

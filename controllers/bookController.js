@@ -25,27 +25,18 @@ const addBook = async (req, res) => {
     const missingFields = requiredFields.filter((field) => !req.body[field]);
 
     if (missingFields.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: `Missing required fields: ${missingFields.join(", ")}`,
-      });
+      return errorResponse(res, `Missing required fields: ${missingFields.join(", ")}`, 400);
     }
 
     // Validate price is a number
     if (isNaN(price) || price < 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Price must be a valid positive number",
-      });
+      return errorResponse(res, "Price must be a valid positive number", 400);
     }
 
     // Validate status
     const validStatuses = ["available", "unavailable", "out-of-stock"];
     if (!validStatuses.includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
-      });
+      return errorResponse(res, `Invalid status. Must be one of: ${validStatuses.join(", ")}`, 400);
     }
 
     // Get librarian ID from authenticated user
@@ -70,10 +61,7 @@ const addBook = async (req, res) => {
     const result = await booksCollection.insertOne(bookDocument);
 
     if (!result.acknowledged) {
-      return res.status(500).json({
-        success: false,
-        message: "Failed to add book to database",
-      });
+      return errorResponse(res, "Failed to add book to database", 500);
     }
 
     // Return created book
@@ -82,18 +70,10 @@ const addBook = async (req, res) => {
       ...bookDocument,
     };
 
-    res.status(201).json({
-      success: true,
-      message: "Book added successfully",
-      data: createdBook,
-    });
+    return successResponse(res, createdBook, "Book added successfully", 201);
   } catch (error) {
     console.error("❌ Error adding book:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to add book",
-      error: error.message,
-    });
+    return errorResponse(res, "Failed to add book", 500, error.message);
   }
 };
 
@@ -157,23 +137,16 @@ const getAllBooks = async (req, res) => {
     // Calculate total pages
     const totalPages = Math.ceil(totalCount / limitNum);
 
-    res.status(200).json({
-      success: true,
-      data: {
-        books,
-        totalCount,
-        page: pageNum,
-        totalPages,
-        limit: limitNum,
-      },
-    });
+    return successResponse(res, {
+      books,
+      totalCount,
+      page: pageNum,
+      totalPages,
+      limit: limitNum,
+    }, "Books retrieved successfully");
   } catch (error) {
     console.error("❌ Error getting books:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to get books",
-      error: error.message,
-    });
+    return errorResponse(res, "Failed to get books", 500, error.message);
   }
 };
 
@@ -188,10 +161,7 @@ const getBookById = async (req, res) => {
 
     // Validate ObjectId
     if (!ObjectId.isValid(id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid book ID format",
-      });
+      return errorResponse(res, "Invalid book ID format", 400);
     }
 
     const booksCollection = getCollection(COLLECTIONS.BOOKS);
@@ -237,23 +207,13 @@ const getBookById = async (req, res) => {
       .toArray();
 
     if (books.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Book not found",
-      });
+      return errorResponse(res, "Book not found", 404);
     }
 
-    res.status(200).json({
-      success: true,
-      data: books[0],
-    });
+    return successResponse(res, books[0], "Book details retrieved successfully");
   } catch (error) {
     console.error("❌ Error getting book:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to get book details",
-      error: error.message,
-    });
+    return errorResponse(res, "Failed to get book details", 500, error.message);
   }
 };
 
@@ -274,18 +234,10 @@ const getLibrarianBooks = async (req, res) => {
       .sort({ createdAt: -1 })
       .toArray();
 
-    res.status(200).json({
-      success: true,
-      count: books.length,
-      data: books,
-    });
+    return successResponse(res, { books, count: books.length }, "Librarian books retrieved successfully");
   } catch (error) {
     console.error("❌ Error getting librarian books:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to get librarian books",
-      error: error.message,
-    });
+    return errorResponse(res, "Failed to get librarian books", 500, error.message);
   }
 };
 
@@ -339,18 +291,10 @@ const getAllBooksForAdmin = async (req, res) => {
       ])
       .toArray();
 
-    res.status(200).json({
-      success: true,
-      count: books.length,
-      data: books,
-    });
+    return successResponse(res, { books, count: books.length }, "All books retrieved successfully");
   } catch (error) {
     console.error("❌ Error getting all books for admin:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to get books",
-      error: error.message,
-    });
+    return errorResponse(res, "Failed to get books", 500, error.message);
   }
 };
 
@@ -367,10 +311,7 @@ const updateBook = async (req, res) => {
 
     // Validate ObjectId
     if (!ObjectId.isValid(id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid book ID format",
-      });
+      return errorResponse(res, "Invalid book ID format", 400);
     }
 
     const booksCollection = getCollection(COLLECTIONS.BOOKS);
@@ -379,10 +320,7 @@ const updateBook = async (req, res) => {
     const book = await booksCollection.findOne({ _id: new ObjectId(id) });
 
     if (!book) {
-      return res.status(404).json({
-        success: false,
-        message: "Book not found",
-      });
+      return errorResponse(res, "Book not found", 404);
     }
 
     // Verify librarian ownership (unless user is admin)
@@ -390,10 +328,7 @@ const updateBook = async (req, res) => {
     const isAdmin = req.user.role === "admin";
 
     if (!isOwner && !isAdmin) {
-      return res.status(403).json({
-        success: false,
-        message: "You can only update your own books",
-      });
+      return errorResponse(res, "You can only update your own books", 403);
     }
 
     // Build update object
@@ -403,10 +338,7 @@ const updateBook = async (req, res) => {
     if (image) updateData.image = image.trim();
     if (price !== undefined) {
       if (isNaN(price) || price < 0) {
-        return res.status(400).json({
-          success: false,
-          message: "Price must be a valid positive number",
-        });
+        return errorResponse(res, "Price must be a valid positive number", 400);
       }
       updateData.price = parseFloat(price);
     }
@@ -419,12 +351,7 @@ const updateBook = async (req, res) => {
         "unpublished",
       ];
       if (!validStatuses.includes(status)) {
-        return res.status(400).json({
-          success: false,
-          message: `Invalid status. Must be one of: ${validStatuses.join(
-            ", "
-          )}`,
-        });
+        return errorResponse(res, `Invalid status. Must be one of: ${validStatuses.join(", ")}`, 400);
       }
       updateData.status = status;
     }
@@ -440,10 +367,7 @@ const updateBook = async (req, res) => {
     );
 
     if (result.matchedCount === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Book not found",
-      });
+      return errorResponse(res, "Book not found", 404);
     }
 
     // Get updated book
@@ -451,18 +375,10 @@ const updateBook = async (req, res) => {
       _id: new ObjectId(id),
     });
 
-    res.status(200).json({
-      success: true,
-      message: "Book updated successfully",
-      data: updatedBook,
-    });
+    return successResponse(res, updatedBook, "Book updated successfully");
   } catch (error) {
     console.error("❌ Error updating book:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to update book",
-      error: error.message,
-    });
+    return errorResponse(res, "Failed to update book", 500, error.message);
   }
 };
 
@@ -477,10 +393,7 @@ const deleteBook = async (req, res) => {
 
     // Validate ObjectId
     if (!ObjectId.isValid(id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid book ID format",
-      });
+      return errorResponse(res, "Invalid book ID format", 400);
     }
 
     const bookId = new ObjectId(id);
@@ -490,20 +403,14 @@ const deleteBook = async (req, res) => {
     const book = await booksCollection.findOne({ _id: bookId });
 
     if (!book) {
-      return res.status(404).json({
-        success: false,
-        message: "Book not found",
-      });
+      return errorResponse(res, "Book not found", 404);
     }
 
     // Delete the book
     const deleteResult = await booksCollection.deleteOne({ _id: bookId });
 
     if (deleteResult.deletedCount === 0) {
-      return res.status(500).json({
-        success: false,
-        message: "Failed to delete book",
-      });
+      return errorResponse(res, "Failed to delete book", 500);
     }
 
     // Cascade delete: Remove all orders for this book
@@ -518,17 +425,10 @@ const deleteBook = async (req, res) => {
     const reviewsCollection = getCollection(COLLECTIONS.REVIEWS);
     await reviewsCollection.deleteMany({ book: bookId });
 
-    res.status(200).json({
-      success: true,
-      message: "Book and all related data deleted successfully",
-    });
+    return successResponse(res, null, "Book and all related data deleted successfully");
   } catch (error) {
     console.error("❌ Error deleting book:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to delete book",
-      error: error.message,
-    });
+    return errorResponse(res, "Failed to delete book", 500, error.message);
   }
 };
 
@@ -543,10 +443,7 @@ const toggleBookStatus = async (req, res) => {
 
     // Validate ObjectId
     if (!ObjectId.isValid(id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid book ID format",
-      });
+      return errorResponse(res, "Invalid book ID format", 400);
     }
 
     const booksCollection = getCollection(COLLECTIONS.BOOKS);
@@ -555,10 +452,7 @@ const toggleBookStatus = async (req, res) => {
     const book = await booksCollection.findOne({ _id: new ObjectId(id) });
 
     if (!book) {
-      return res.status(404).json({
-        success: false,
-        message: "Book not found",
-      });
+      return errorResponse(res, "Book not found", 404);
     }
 
     // Verify librarian ownership (unless user is admin)
@@ -566,10 +460,7 @@ const toggleBookStatus = async (req, res) => {
     const isAdmin = req.user.role === "admin";
 
     if (!isOwner && !isAdmin) {
-      return res.status(403).json({
-        success: false,
-        message: "You can only toggle status of your own books",
-      });
+      return errorResponse(res, "You can only toggle status of your own books", 403);
     }
 
     // Toggle status
@@ -587,26 +478,13 @@ const toggleBookStatus = async (req, res) => {
     );
 
     if (result.matchedCount === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Book not found",
-      });
+      return errorResponse(res, "Book not found", 404);
     }
 
-    res.status(200).json({
-      success: true,
-      message: `Book status changed to '${newStatus}' successfully`,
-      data: {
-        status: newStatus,
-      },
-    });
+    return successResponse(res, { status: newStatus }, `Book status changed to '${newStatus}' successfully`);
   } catch (error) {
     console.error("❌ Error toggling book status:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to toggle book status",
-      error: error.message,
-    });
+    return errorResponse(res, "Failed to toggle book status", 500, error.message);
   }
 };
 

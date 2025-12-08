@@ -1,6 +1,7 @@
 const { ObjectId } = require("mongodb");
 const { getCollection } = require("../utils/dbHelpers");
 const COLLECTIONS = require("../config/collections");
+const { successResponse, errorResponse } = require("../utils/response");
 
 /**
  * Add review (user can review only if they ordered the book)
@@ -13,27 +14,18 @@ const addReview = async (req, res) => {
 
     // Validate required fields
     if (!bookId || !rating) {
-      return res.status(400).json({
-        success: false,
-        message: "Book ID and rating are required",
-      });
+      return errorResponse(res, "Book ID and rating are required", 400);
     }
 
     // Validate ObjectId format
     if (!ObjectId.isValid(bookId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid book ID format",
-      });
+      return errorResponse(res, "Invalid book ID format", 400);
     }
 
     // Validate rating (1-5)
     const ratingNum = parseInt(rating);
     if (isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
-      return res.status(400).json({
-        success: false,
-        message: "Rating must be a number between 1 and 5",
-      });
+      return errorResponse(res, "Rating must be a number between 1 and 5", 400);
     }
 
     const userId = req.user._id;
@@ -47,11 +39,7 @@ const addReview = async (req, res) => {
     });
 
     if (!order) {
-      return res.status(403).json({
-        success: false,
-        message:
-          "You must order and receive this book before reviewing it. Only delivered orders can be reviewed.",
-      });
+      return errorResponse(res, "You must order and receive this book before reviewing it. Only delivered orders can be reviewed.", 403);
     }
 
     // Check if review already exists
@@ -90,10 +78,7 @@ const addReview = async (req, res) => {
       );
 
       if (result.matchedCount === 0) {
-        return res.status(500).json({
-          success: false,
-          message: "Failed to update review",
-        });
+        return errorResponse(res, "Failed to update review", 500);
       }
 
       message = "Review updated successfully";
@@ -102,29 +87,23 @@ const addReview = async (req, res) => {
       result = await reviewsCollection.insertOne(reviewData);
 
       if (!result.acknowledged) {
-        return res.status(500).json({
-          success: false,
-          message: "Failed to add review",
-        });
+        return errorResponse(res, "Failed to add review", 500);
       }
 
       message = "Review added successfully";
     }
 
-    res.status(existingReview ? 200 : 201).json({
-      success: true,
-      message,
-      data: existingReview
+    return successResponse(
+      res,
+      existingReview
         ? { ...existingReview, rating: ratingNum, comment: comment || "" }
         : { _id: result.insertedId, ...reviewData },
-    });
+      message,
+      existingReview ? 200 : 201
+    );
   } catch (error) {
     console.error("❌ Error adding review:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to add review",
-      error: error.message,
-    });
+    return errorResponse(res, "Failed to add review", 500, error.message);
   }
 };
 
@@ -139,10 +118,7 @@ const getBookReviews = async (req, res) => {
 
     // Validate ObjectId format
     if (!ObjectId.isValid(bookId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid book ID format",
-      });
+      return errorResponse(res, "Invalid book ID format", 400);
     }
 
     const reviewsCollection = getCollection(COLLECTIONS.REVIEWS);
@@ -189,19 +165,14 @@ const getBookReviews = async (req, res) => {
           reviews.length
         : 0;
 
-    res.status(200).json({
-      success: true,
+    return successResponse(res, {
+      reviews,
       count: reviews.length,
       averageRating: Math.round(averageRating * 10) / 10,
-      data: reviews,
-    });
+    }, "Book reviews retrieved successfully");
   } catch (error) {
     console.error("❌ Error getting book reviews:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to get book reviews",
-      error: error.message,
-    });
+    return errorResponse(res, "Failed to get book reviews", 500, error.message);
   }
 };
 
@@ -253,18 +224,10 @@ const getUserReviews = async (req, res) => {
       ])
       .toArray();
 
-    res.status(200).json({
-      success: true,
-      count: reviews.length,
-      data: reviews,
-    });
+    return successResponse(res, { reviews, count: reviews.length }, "User reviews retrieved successfully");
   } catch (error) {
     console.error("❌ Error getting user reviews:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to get user reviews",
-      error: error.message,
-    });
+    return errorResponse(res, "Failed to get user reviews", 500, error.message);
   }
 };
 

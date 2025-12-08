@@ -1,6 +1,7 @@
 const { ObjectId } = require("mongodb");
 const { getCollection } = require("../utils/dbHelpers");
 const COLLECTIONS = require("../config/collections");
+const { successResponse, errorResponse } = require("../utils/response");
 
 /**
  * Create payment record after successful payment
@@ -17,26 +18,17 @@ const createPayment = async (req, res) => {
     const missingFields = requiredFields.filter((field) => !req.body[field]);
 
     if (missingFields.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: `Missing required fields: ${missingFields.join(", ")}`,
-      });
+      return errorResponse(res, `Missing required fields: ${missingFields.join(", ")}`, 400);
     }
 
     // Validate orderId format
     if (!ObjectId.isValid(orderId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid order ID format",
-      });
+      return errorResponse(res, "Invalid order ID format", 400);
     }
 
     // Validate amount
     if (isNaN(amount) || amount <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Amount must be a valid positive number",
-      });
+      return errorResponse(res, "Amount must be a valid positive number", 400);
     }
 
     // Verify order exists and belongs to user
@@ -46,34 +38,22 @@ const createPayment = async (req, res) => {
     });
 
     if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found",
-      });
+      return errorResponse(res, "Order not found", 404);
     }
 
     // Verify user ownership
     if (order.user.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: "You can only create payment for your own orders",
-      });
+      return errorResponse(res, "You can only create payment for your own orders", 403);
     }
 
     // Check if order is already paid
     if (order.paymentStatus === "paid") {
-      return res.status(400).json({
-        success: false,
-        message: "Payment has already been completed for this order",
-      });
+      return errorResponse(res, "Payment has already been completed for this order", 400);
     }
 
     // Check if amount matches order total
     if (parseFloat(amount) !== order.totalAmount) {
-      return res.status(400).json({
-        success: false,
-        message: `Payment amount (${amount}) does not match order total (${order.totalAmount})`,
-      });
+      return errorResponse(res, `Payment amount (${amount}) does not match order total (${order.totalAmount})`, 400);
     }
 
     // Check if paymentId is unique
@@ -81,10 +61,7 @@ const createPayment = async (req, res) => {
     const existingPayment = await paymentsCollection.findOne({ paymentId });
 
     if (existingPayment) {
-      return res.status(400).json({
-        success: false,
-        message: "Payment ID already exists. Duplicate payment detected.",
-      });
+      return errorResponse(res, "Payment ID already exists. Duplicate payment detected.", 400);
     }
 
     // Create payment document
@@ -102,10 +79,7 @@ const createPayment = async (req, res) => {
     const result = await paymentsCollection.insertOne(paymentDocument);
 
     if (!result.acknowledged) {
-      return res.status(500).json({
-        success: false,
-        message: "Failed to create payment record",
-      });
+      return errorResponse(res, "Failed to create payment record", 500);
     }
 
     // Update order's paymentStatus to 'paid'
@@ -123,10 +97,7 @@ const createPayment = async (req, res) => {
       // Rollback: Delete the payment if order update fails
       await paymentsCollection.deleteOne({ _id: result.insertedId });
 
-      return res.status(500).json({
-        success: false,
-        message: "Failed to update order payment status",
-      });
+      return errorResponse(res, "Failed to update order payment status", 500);
     }
 
     // Return created payment
@@ -135,18 +106,10 @@ const createPayment = async (req, res) => {
       ...paymentDocument,
     };
 
-    res.status(201).json({
-      success: true,
-      message: "Payment created successfully",
-      data: createdPayment,
-    });
+    return successResponse(res, createdPayment, "Payment created successfully", 201);
   } catch (error) {
     console.error("❌ Error creating payment:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to create payment",
-      error: error.message,
-    });
+    return errorResponse(res, "Failed to create payment", 500, error.message);
   }
 };
 
@@ -223,18 +186,10 @@ const getUserPayments = async (req, res) => {
       ])
       .toArray();
 
-    res.status(200).json({
-      success: true,
-      count: payments.length,
-      data: payments,
-    });
+    return successResponse(res, { payments, count: payments.length }, "User payments retrieved successfully");
   } catch (error) {
     console.error("❌ Error getting user payments:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to get payment records",
-      error: error.message,
-    });
+    return errorResponse(res, "Failed to get payment records", 500, error.message);
   }
 };
 
