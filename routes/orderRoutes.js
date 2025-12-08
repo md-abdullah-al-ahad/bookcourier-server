@@ -12,6 +12,9 @@ const {
   getLibrarianOrders,
   getAllOrders,
   getOrderById,
+  cancelOrder,
+  updateOrderStatus,
+  updatePaymentStatus,
 } = require("../controllers/orderController");
 
 /**
@@ -53,5 +56,26 @@ router.get("/admin/all", verifyToken, checkAdmin, getAllOrders);
  * @access  Protected (order owner, librarian, or admin)
  */
 router.get("/:id", verifyToken, checkUser, getOrderById);
+
+/**
+ * @route   PATCH /api/orders/:id/cancel
+ * @desc    Cancel order (user can cancel if status is pending)
+ * @access  Protected (order owner)
+ */
+router.patch("/:id/cancel", verifyToken, checkUser, cancelOrder);
+
+/**
+ * @route   PATCH /api/orders/:id/status
+ * @desc    Update order status (librarian can change status)
+ * @access  Librarian/Admin only
+ */
+router.patch("/:id/status", verifyToken, checkLibrarian, updateOrderStatus);
+
+/**
+ * @route   PATCH /api/orders/:id/payment
+ * @desc    Update payment status after payment
+ * @access  Protected (order owner)
+ */
+router.patch("/:id/payment", verifyToken, checkUser, updatePaymentStatus);
 
 module.exports = router;

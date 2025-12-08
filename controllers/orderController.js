@@ -497,10 +497,282 @@ const getOrderById = async (req, res) => {
   }
 };
 
+/**
+ * Cancel order (user can cancel if status is pending)
+ * @route PATCH /api/orders/:id/cancel
+ * @access Protected (order owner)
+ */
+const cancelOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Validate ObjectId
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid order ID format",
+      });
+    }
+
+    const ordersCollection = getCollection(COLLECTIONS.ORDERS);
+
+    // Find order
+    const order = await ordersCollection.findOne({ _id: new ObjectId(id) });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Verify user ownership
+    if (order.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only cancel your own orders",
+      });
+    }
+
+    // Check if order status is pending
+    if (order.orderStatus !== "pending") {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot cancel order with status '${order.orderStatus}'. Only pending orders can be cancelled.`,
+      });
+    }
+
+    // Update order status to cancelled
+    const result = await ordersCollection.updateOne(
+      { _id: new ObjectId(id) },
+      {
+        $set: {
+          orderStatus: "cancelled",
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Order cancelled successfully",
+    });
+  } catch (error) {
+    console.error("❌ Error cancelling order:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to cancel order",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Update order status (librarian can change status)
+ * @route PATCH /api/orders/:id/status
+ * @access Librarian/Admin only
+ */
+const updateOrderStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status: newStatus } = req.body;
+
+    // Validate ObjectId
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid order ID format",
+      });
+    }
+
+    // Validate new status
+    if (!newStatus) {
+      return res.status(400).json({
+        success: false,
+        message: "Status is required",
+      });
+    }
+
+    const validStatuses = ["pending", "shipped", "delivered", "cancelled"];
+    if (!validStatuses.includes(newStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
+      });
+    }
+
+    const ordersCollection = getCollection(COLLECTIONS.ORDERS);
+
+    // Find order
+    const order = await ordersCollection.findOne({ _id: new ObjectId(id) });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Verify librarian ownership (unless admin)
+    const isLibrarian = order.librarian.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === "admin";
+
+    if (!isLibrarian && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only update orders for your own books",
+      });
+    }
+
+    // Validate status transitions
+    const currentStatus = order.orderStatus;
+
+    // Define valid transitions
+    const validTransitions = {
+      pending: ["shipped", "cancelled"],
+      shipped: ["delivered"],
+      delivered: [],
+      cancelled: [],
+    };
+
+    if (!validTransitions[currentStatus].includes(newStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid status transition. Cannot change from '${currentStatus}' to '${newStatus}'. Valid transitions: ${
+          validTransitions[currentStatus].join(", ") || "none"
+        }`,
+      });
+    }
+
+    // Update order status
+    const result = await ordersCollection.updateOne(
+      { _id: new ObjectId(id) },
+      {
+        $set: {
+          orderStatus: newStatus,
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Get updated order
+    const updatedOrder = await ordersCollection.findOne({
+      _id: new ObjectId(id),
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Order status updated to '${newStatus}' successfully`,
+      data: updatedOrder,
+    });
+  } catch (error) {
+    console.error("❌ Error updating order status:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update order status",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Update payment status
+ * @route PATCH /api/orders/:id/payment
+ * @access Protected (order owner)
+ */
+const updatePaymentStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Validate ObjectId
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid order ID format",
+      });
+    }
+
+    const ordersCollection = getCollection(COLLECTIONS.ORDERS);
+
+    // Find order
+    const order = await ordersCollection.findOne({ _id: new ObjectId(id) });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // Verify user ownership
+    if (order.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only update payment for your own orders",
+      });
+    }
+
+    // Check if already paid
+    if (order.paymentStatus === "paid") {
+      return res.status(400).json({
+        success: false,
+        message: "Payment has already been completed for this order",
+      });
+    }
+
+    // Update payment status to paid
+    const result = await ordersCollection.updateOne(
+      { _id: new ObjectId(id) },
+      {
+        $set: {
+          paymentStatus: "paid",
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Payment status updated successfully",
+    });
+  } catch (error) {
+    console.error("❌ Error updating payment status:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update payment status",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   placeOrder,
   getUserOrders,
   getLibrarianOrders,
   getAllOrders,
   getOrderById,
+  cancelOrder,
+  updateOrderStatus,
+  updatePaymentStatus,
 };
