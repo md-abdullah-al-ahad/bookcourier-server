@@ -1,5 +1,6 @@
 const { getDB } = require("../config/db");
 const COLLECTIONS = require("../config/collections");
+const { ObjectId } = require("mongodb");
 
 /**
  * Get a MongoDB collection
@@ -98,7 +99,102 @@ const createIndexes = async () => {
   }
 };
 
+/**
+ * Validate if a string is a valid MongoDB ObjectId
+ * @param {string} id - ID to validate
+ * @returns {boolean} True if valid ObjectId format
+ */
+const validateObjectId = (id) => {
+  if (!id) return false;
+  return ObjectId.isValid(id);
+};
+
+/**
+ * Convert string to MongoDB ObjectId
+ * @param {string} id - ID string to convert
+ * @returns {ObjectId|null} ObjectId instance or null if invalid
+ */
+const toObjectId = (id) => {
+  if (!validateObjectId(id)) return null;
+  try {
+    return new ObjectId(id);
+  } catch (error) {
+    return null;
+  }
+};
+
+/**
+ * Remove undefined and null values from query object
+ * Useful for building MongoDB queries with optional filters
+ * @param {Object} query - Query object to sanitize
+ * @returns {Object} Sanitized query object
+ */
+const sanitizeQuery = (query) => {
+  const sanitized = {};
+  for (const key in query) {
+    if (query[key] !== undefined && query[key] !== null) {
+      sanitized[key] = query[key];
+    }
+  }
+  return sanitized;
+};
+
+/**
+ * Calculate pagination values
+ * @param {number} page - Page number (1-based)
+ * @param {number} limit - Items per page
+ * @returns {Object} Pagination object with skip, limit, and page
+ */
+const paginationHelper = (page = 1, limit = 10) => {
+  const pageNum = parseInt(page) || 1;
+  const limitNum = parseInt(limit) || 10;
+  const skip = (pageNum - 1) * limitNum;
+
+  return {
+    skip,
+    limit: limitNum,
+    page: pageNum,
+  };
+};
+
+/**
+ * Build MongoDB sort object from sort parameter string
+ * @param {string} sortParam - Sort parameter (e.g., 'name', '-price', 'createdAt')
+ * @returns {Object} MongoDB sort object
+ * @example
+ * buildSortObject('name') // { name: 1 }
+ * buildSortObject('-price') // { price: -1 }
+ * buildSortObject('createdAt,-name') // { createdAt: 1, name: -1 }
+ */
+const buildSortObject = (sortParam = "-createdAt") => {
+  const sortObject = {};
+
+  if (!sortParam) {
+    return { createdAt: -1 }; // Default sort
+  }
+
+  const sortFields = sortParam.split(",");
+
+  sortFields.forEach((field) => {
+    const trimmedField = field.trim();
+    if (trimmedField.startsWith("-")) {
+      // Descending order
+      sortObject[trimmedField.substring(1)] = -1;
+    } else {
+      // Ascending order
+      sortObject[trimmedField] = 1;
+    }
+  });
+
+  return sortObject;
+};
+
 module.exports = {
   getCollection,
   createIndexes,
+  validateObjectId,
+  toObjectId,
+  sanitizeQuery,
+  paginationHelper,
+  buildSortObject,
 };
