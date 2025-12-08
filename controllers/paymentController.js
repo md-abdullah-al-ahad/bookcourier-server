@@ -18,7 +18,11 @@ const createPayment = async (req, res) => {
     const missingFields = requiredFields.filter((field) => !req.body[field]);
 
     if (missingFields.length > 0) {
-      return errorResponse(res, `Missing required fields: ${missingFields.join(", ")}`, 400);
+      return errorResponse(
+        res,
+        `Missing required fields: ${missingFields.join(", ")}`,
+        400
+      );
     }
 
     // Validate orderId format
@@ -43,17 +47,29 @@ const createPayment = async (req, res) => {
 
     // Verify user ownership
     if (order.user.toString() !== req.user._id.toString()) {
-      return errorResponse(res, "You can only create payment for your own orders", 403);
+      return errorResponse(
+        res,
+        "You can only create payment for your own orders",
+        403
+      );
     }
 
     // Check if order is already paid
     if (order.paymentStatus === "paid") {
-      return errorResponse(res, "Payment has already been completed for this order", 400);
+      return errorResponse(
+        res,
+        "Payment has already been completed for this order",
+        400
+      );
     }
 
     // Check if amount matches order total
     if (parseFloat(amount) !== order.totalAmount) {
-      return errorResponse(res, `Payment amount (${amount}) does not match order total (${order.totalAmount})`, 400);
+      return errorResponse(
+        res,
+        `Payment amount (${amount}) does not match order total (${order.totalAmount})`,
+        400
+      );
     }
 
     // Check if paymentId is unique
@@ -61,7 +77,11 @@ const createPayment = async (req, res) => {
     const existingPayment = await paymentsCollection.findOne({ paymentId });
 
     if (existingPayment) {
-      return errorResponse(res, "Payment ID already exists. Duplicate payment detected.", 400);
+      return errorResponse(
+        res,
+        "Payment ID already exists. Duplicate payment detected.",
+        400
+      );
     }
 
     // Create payment document
@@ -106,7 +126,12 @@ const createPayment = async (req, res) => {
       ...paymentDocument,
     };
 
-    return successResponse(res, createdPayment, "Payment created successfully", 201);
+    return successResponse(
+      res,
+      createdPayment,
+      "Payment created successfully",
+      201
+    );
   } catch (error) {
     console.error("❌ Error creating payment:", error);
     return errorResponse(res, "Failed to create payment", 500, error.message);
@@ -186,10 +211,19 @@ const getUserPayments = async (req, res) => {
       ])
       .toArray();
 
-    return successResponse(res, { payments, count: payments.length }, "User payments retrieved successfully");
+    return successResponse(
+      res,
+      { payments, count: payments.length },
+      "User payments retrieved successfully"
+    );
   } catch (error) {
     console.error("❌ Error getting user payments:", error);
-    return errorResponse(res, "Failed to get payment records", 500, error.message);
+    return errorResponse(
+      res,
+      "Failed to get payment records",
+      500,
+      error.message
+    );
   }
 };
 

@@ -25,7 +25,11 @@ const addBook = async (req, res) => {
     const missingFields = requiredFields.filter((field) => !req.body[field]);
 
     if (missingFields.length > 0) {
-      return errorResponse(res, `Missing required fields: ${missingFields.join(", ")}`, 400);
+      return errorResponse(
+        res,
+        `Missing required fields: ${missingFields.join(", ")}`,
+        400
+      );
     }
 
     // Validate price is a number
@@ -36,7 +40,11 @@ const addBook = async (req, res) => {
     // Validate status
     const validStatuses = ["available", "unavailable", "out-of-stock"];
     if (!validStatuses.includes(status)) {
-      return errorResponse(res, `Invalid status. Must be one of: ${validStatuses.join(", ")}`, 400);
+      return errorResponse(
+        res,
+        `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
+        400
+      );
     }
 
     // Get librarian ID from authenticated user
@@ -137,13 +145,17 @@ const getAllBooks = async (req, res) => {
     // Calculate total pages
     const totalPages = Math.ceil(totalCount / limitNum);
 
-    return successResponse(res, {
-      books,
-      totalCount,
-      page: pageNum,
-      totalPages,
-      limit: limitNum,
-    }, "Books retrieved successfully");
+    return successResponse(
+      res,
+      {
+        books,
+        totalCount,
+        page: pageNum,
+        totalPages,
+        limit: limitNum,
+      },
+      "Books retrieved successfully"
+    );
   } catch (error) {
     console.error("❌ Error getting books:", error);
     return errorResponse(res, "Failed to get books", 500, error.message);
@@ -210,7 +222,11 @@ const getBookById = async (req, res) => {
       return errorResponse(res, "Book not found", 404);
     }
 
-    return successResponse(res, books[0], "Book details retrieved successfully");
+    return successResponse(
+      res,
+      books[0],
+      "Book details retrieved successfully"
+    );
   } catch (error) {
     console.error("❌ Error getting book:", error);
     return errorResponse(res, "Failed to get book details", 500, error.message);
@@ -234,10 +250,19 @@ const getLibrarianBooks = async (req, res) => {
       .sort({ createdAt: -1 })
       .toArray();
 
-    return successResponse(res, { books, count: books.length }, "Librarian books retrieved successfully");
+    return successResponse(
+      res,
+      { books, count: books.length },
+      "Librarian books retrieved successfully"
+    );
   } catch (error) {
     console.error("❌ Error getting librarian books:", error);
-    return errorResponse(res, "Failed to get librarian books", 500, error.message);
+    return errorResponse(
+      res,
+      "Failed to get librarian books",
+      500,
+      error.message
+    );
   }
 };
 
@@ -291,7 +316,11 @@ const getAllBooksForAdmin = async (req, res) => {
       ])
       .toArray();
 
-    return successResponse(res, { books, count: books.length }, "All books retrieved successfully");
+    return successResponse(
+      res,
+      { books, count: books.length },
+      "All books retrieved successfully"
+    );
   } catch (error) {
     console.error("❌ Error getting all books for admin:", error);
     return errorResponse(res, "Failed to get books", 500, error.message);
@@ -351,7 +380,11 @@ const updateBook = async (req, res) => {
         "unpublished",
       ];
       if (!validStatuses.includes(status)) {
-        return errorResponse(res, `Invalid status. Must be one of: ${validStatuses.join(", ")}`, 400);
+        return errorResponse(
+          res,
+          `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
+          400
+        );
       }
       updateData.status = status;
     }
@@ -425,7 +458,11 @@ const deleteBook = async (req, res) => {
     const reviewsCollection = getCollection(COLLECTIONS.REVIEWS);
     await reviewsCollection.deleteMany({ book: bookId });
 
-    return successResponse(res, null, "Book and all related data deleted successfully");
+    return successResponse(
+      res,
+      null,
+      "Book and all related data deleted successfully"
+    );
   } catch (error) {
     console.error("❌ Error deleting book:", error);
     return errorResponse(res, "Failed to delete book", 500, error.message);
@@ -460,7 +497,11 @@ const toggleBookStatus = async (req, res) => {
     const isAdmin = req.user.role === "admin";
 
     if (!isOwner && !isAdmin) {
-      return errorResponse(res, "You can only toggle status of your own books", 403);
+      return errorResponse(
+        res,
+        "You can only toggle status of your own books",
+        403
+      );
     }
 
     // Toggle status
@@ -481,10 +522,19 @@ const toggleBookStatus = async (req, res) => {
       return errorResponse(res, "Book not found", 404);
     }
 
-    return successResponse(res, { status: newStatus }, `Book status changed to '${newStatus}' successfully`);
+    return successResponse(
+      res,
+      { status: newStatus },
+      `Book status changed to '${newStatus}' successfully`
+    );
   } catch (error) {
     console.error("❌ Error toggling book status:", error);
-    return errorResponse(res, "Failed to toggle book status", 500, error.message);
+    return errorResponse(
+      res,
+      "Failed to toggle book status",
+      500,
+      error.message
+    );
   }
 };
 

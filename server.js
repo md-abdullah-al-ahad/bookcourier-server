@@ -4,6 +4,7 @@ const cookieParser = require("cookie-parser");
 const { connectDB, getDB } = require("./config/db");
 const { initializeFirebaseAdmin } = require("./config/firebase-admin");
 const { createIndexes } = require("./utils/dbHelpers");
+const requestLogger = require("./middleware/requestLogger");
 require("dotenv").config();
 
 // Import Routes
@@ -29,6 +30,9 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// Request Logger Middleware (logs all incoming requests)
+app.use(requestLogger);
 
 // Make database accessible to routes
 app.use((req, res, next) => {

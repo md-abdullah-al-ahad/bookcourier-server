@@ -57,13 +57,23 @@ const addToWishlist = async (req, res) => {
       return errorResponse(res, "Failed to add book to wishlist", 500);
     }
 
-    return successResponse(res, {
-      _id: result.insertedId,
-      ...wishlistDocument,
-    }, "Book added to wishlist successfully", 201);
+    return successResponse(
+      res,
+      {
+        _id: result.insertedId,
+        ...wishlistDocument,
+      },
+      "Book added to wishlist successfully",
+      201
+    );
   } catch (error) {
     console.error("❌ Error adding to wishlist:", error);
-    return errorResponse(res, "Failed to add book to wishlist", 500, error.message);
+    return errorResponse(
+      res,
+      "Failed to add book to wishlist",
+      500,
+      error.message
+    );
   }
 };
 
@@ -94,10 +104,19 @@ const removeFromWishlist = async (req, res) => {
       return errorResponse(res, "Book not found in wishlist", 404);
     }
 
-    return successResponse(res, null, "Book removed from wishlist successfully");
+    return successResponse(
+      res,
+      null,
+      "Book removed from wishlist successfully"
+    );
   } catch (error) {
     console.error("❌ Error removing from wishlist:", error);
-    return errorResponse(res, "Failed to remove book from wishlist", 500, error.message);
+    return errorResponse(
+      res,
+      "Failed to remove book from wishlist",
+      500,
+      error.message
+    );
   }
 };
 
@@ -149,7 +168,11 @@ const getUserWishlist = async (req, res) => {
       ])
       .toArray();
 
-    return successResponse(res, { wishlist, count: wishlist.length }, "User wishlist retrieved successfully");
+    return successResponse(
+      res,
+      { wishlist, count: wishlist.length },
+      "User wishlist retrieved successfully"
+    );
   } catch (error) {
     console.error("❌ Error getting wishlist:", error);
     return errorResponse(res, "Failed to get wishlist", 500, error.message);

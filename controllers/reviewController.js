@@ -39,7 +39,11 @@ const addReview = async (req, res) => {
     });
 
     if (!order) {
-      return errorResponse(res, "You must order and receive this book before reviewing it. Only delivered orders can be reviewed.", 403);
+      return errorResponse(
+        res,
+        "You must order and receive this book before reviewing it. Only delivered orders can be reviewed.",
+        403
+      );
     }
 
     // Check if review already exists
@@ -165,11 +169,15 @@ const getBookReviews = async (req, res) => {
           reviews.length
         : 0;
 
-    return successResponse(res, {
-      reviews,
-      count: reviews.length,
-      averageRating: Math.round(averageRating * 10) / 10,
-    }, "Book reviews retrieved successfully");
+    return successResponse(
+      res,
+      {
+        reviews,
+        count: reviews.length,
+        averageRating: Math.round(averageRating * 10) / 10,
+      },
+      "Book reviews retrieved successfully"
+    );
   } catch (error) {
     console.error("❌ Error getting book reviews:", error);
     return errorResponse(res, "Failed to get book reviews", 500, error.message);
@@ -224,7 +232,11 @@ const getUserReviews = async (req, res) => {
       ])
       .toArray();
 
-    return successResponse(res, { reviews, count: reviews.length }, "User reviews retrieved successfully");
+    return successResponse(
+      res,
+      { reviews, count: reviews.length },
+      "User reviews retrieved successfully"
+    );
   } catch (error) {
     console.error("❌ Error getting user reviews:", error);
     return errorResponse(res, "Failed to get user reviews", 500, error.message);
