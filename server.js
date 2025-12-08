@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const { connectDB, getDB } = require("./config/db");
+const { initializeFirebaseAdmin } = require("./config/firebase-admin");
 require("dotenv").config();
 
 const app = express();
@@ -43,6 +44,9 @@ const startServer = async () => {
   try {
     // Connect to MongoDB
     await connectDB();
+
+    // Initialize Firebase Admin
+    initializeFirebaseAdmin();
 
     // Start Express server
     app.listen(PORT, () => {
