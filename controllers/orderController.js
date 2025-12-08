@@ -119,6 +119,388 @@ const placeOrder = async (req, res) => {
   }
 };
 
+/**
+ * Get all orders for logged-in user
+ * @route GET /api/orders/my-orders
+ * @access Protected (authenticated user)
+ */
+const getUserOrders = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const ordersCollection = getCollection(COLLECTIONS.ORDERS);
+
+    // Use aggregate to populate book details
+    const orders = await ordersCollection
+      .aggregate([
+        { $match: { user: new ObjectId(userId) } },
+        {
+          $lookup: {
+            from: COLLECTIONS.BOOKS,
+            localField: "book",
+            foreignField: "_id",
+            as: "bookDetails",
+          },
+        },
+        {
+          $unwind: {
+            path: "$bookDetails",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $project: {
+            userName: 1,
+            userEmail: 1,
+            phoneNumber: 1,
+            address: 1,
+            orderStatus: 1,
+            paymentStatus: 1,
+            totalAmount: 1,
+            orderDate: 1,
+            book: {
+              _id: "$bookDetails._id",
+              name: "$bookDetails.name",
+              author: "$bookDetails.author",
+              image: "$bookDetails.image",
+              price: "$bookDetails.price",
+              category: "$bookDetails.category",
+            },
+          },
+        },
+        { $sort: { orderDate: -1 } },
+      ])
+      .toArray();
+
+    res.status(200).json({
+      success: true,
+      count: orders.length,
+      data: orders,
+    });
+  } catch (error) {
+    console.error("❌ Error getting user orders:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get orders",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get all orders for books added by logged-in librarian
+ * @route GET /api/orders/librarian/orders
+ * @access Librarian/Admin only
+ */
+const getLibrarianOrders = async (req, res) => {
+  try {
+    const librarianId = req.user._id;
+
+    const ordersCollection = getCollection(COLLECTIONS.ORDERS);
+
+    // Use aggregate to populate book and user details
+    const orders = await ordersCollection
+      .aggregate([
+        { $match: { librarian: new ObjectId(librarianId) } },
+        {
+          $lookup: {
+            from: COLLECTIONS.BOOKS,
+            localField: "book",
+            foreignField: "_id",
+            as: "bookDetails",
+          },
+        },
+        {
+          $lookup: {
+            from: COLLECTIONS.USERS,
+            localField: "user",
+            foreignField: "_id",
+            as: "userDetails",
+          },
+        },
+        {
+          $unwind: {
+            path: "$bookDetails",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $unwind: {
+            path: "$userDetails",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $project: {
+            userName: 1,
+            userEmail: 1,
+            phoneNumber: 1,
+            address: 1,
+            orderStatus: 1,
+            paymentStatus: 1,
+            totalAmount: 1,
+            orderDate: 1,
+            book: {
+              _id: "$bookDetails._id",
+              name: "$bookDetails.name",
+              author: "$bookDetails.author",
+              image: "$bookDetails.image",
+              price: "$bookDetails.price",
+              category: "$bookDetails.category",
+            },
+            user: {
+              _id: "$userDetails._id",
+              name: "$userDetails.name",
+              email: "$userDetails.email",
+              photoURL: "$userDetails.photoURL",
+            },
+          },
+        },
+        { $sort: { orderDate: -1 } },
+      ])
+      .toArray();
+
+    res.status(200).json({
+      success: true,
+      count: orders.length,
+      data: orders,
+    });
+  } catch (error) {
+    console.error("❌ Error getting librarian orders:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get librarian orders",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get all orders (admin only)
+ * @route GET /api/orders/admin/all
+ * @access Admin only
+ */
+const getAllOrders = async (req, res) => {
+  try {
+    const ordersCollection = getCollection(COLLECTIONS.ORDERS);
+
+    // Use aggregate to populate book, user, and librarian details
+    const orders = await ordersCollection
+      .aggregate([
+        {
+          $lookup: {
+            from: COLLECTIONS.BOOKS,
+            localField: "book",
+            foreignField: "_id",
+            as: "bookDetails",
+          },
+        },
+        {
+          $lookup: {
+            from: COLLECTIONS.USERS,
+            localField: "user",
+            foreignField: "_id",
+            as: "userDetails",
+          },
+        },
+        {
+          $lookup: {
+            from: COLLECTIONS.USERS,
+            localField: "librarian",
+            foreignField: "_id",
+            as: "librarianDetails",
+          },
+        },
+        {
+          $unwind: {
+            path: "$bookDetails",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $unwind: {
+            path: "$userDetails",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $unwind: {
+            path: "$librarianDetails",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $project: {
+            userName: 1,
+            userEmail: 1,
+            phoneNumber: 1,
+            address: 1,
+            orderStatus: 1,
+            paymentStatus: 1,
+            totalAmount: 1,
+            orderDate: 1,
+            book: {
+              _id: "$bookDetails._id",
+              name: "$bookDetails.name",
+              author: "$bookDetails.author",
+              image: "$bookDetails.image",
+              price: "$bookDetails.price",
+              category: "$bookDetails.category",
+            },
+            user: {
+              _id: "$userDetails._id",
+              name: "$userDetails.name",
+              email: "$userDetails.email",
+              photoURL: "$userDetails.photoURL",
+            },
+            librarian: {
+              _id: "$librarianDetails._id",
+              name: "$librarianDetails.name",
+              email: "$librarianDetails.email",
+              role: "$librarianDetails.role",
+            },
+          },
+        },
+        { $sort: { orderDate: -1 } },
+      ])
+      .toArray();
+
+    res.status(200).json({
+      success: true,
+      count: orders.length,
+      data: orders,
+    });
+  } catch (error) {
+    console.error("❌ Error getting all orders:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get orders",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get single order by ID
+ * @route GET /api/orders/:id
+ * @access Protected (order owner, librarian, or admin)
+ */
+const getOrderById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Validate ObjectId
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid order ID format",
+      });
+    }
+
+    const ordersCollection = getCollection(COLLECTIONS.ORDERS);
+
+    // Use aggregate to populate book details
+    const orders = await ordersCollection
+      .aggregate([
+        { $match: { _id: new ObjectId(id) } },
+        {
+          $lookup: {
+            from: COLLECTIONS.BOOKS,
+            localField: "book",
+            foreignField: "_id",
+            as: "bookDetails",
+          },
+        },
+        {
+          $lookup: {
+            from: COLLECTIONS.USERS,
+            localField: "librarian",
+            foreignField: "_id",
+            as: "librarianDetails",
+          },
+        },
+        {
+          $unwind: {
+            path: "$bookDetails",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $unwind: {
+            path: "$librarianDetails",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $project: {
+            user: 1,
+            userName: 1,
+            userEmail: 1,
+            phoneNumber: 1,
+            address: 1,
+            orderStatus: 1,
+            paymentStatus: 1,
+            totalAmount: 1,
+            orderDate: 1,
+            librarian: 1,
+            book: {
+              _id: "$bookDetails._id",
+              name: "$bookDetails.name",
+              author: "$bookDetails.author",
+              image: "$bookDetails.image",
+              price: "$bookDetails.price",
+              category: "$bookDetails.category",
+              description: "$bookDetails.description",
+            },
+            librarianInfo: {
+              _id: "$librarianDetails._id",
+              name: "$librarianDetails.name",
+              email: "$librarianDetails.email",
+            },
+          },
+        },
+      ])
+      .toArray();
+
+    if (orders.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    const order = orders[0];
+
+    // Verify user ownership or admin/librarian access
+    const isOwner = order.user.toString() === req.user._id.toString();
+    const isLibrarian = order.librarian.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === "admin";
+
+    if (!isOwner && !isLibrarian && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "You do not have permission to view this order",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: order,
+    });
+  } catch (error) {
+    console.error("❌ Error getting order:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get order details",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   placeOrder,
+  getUserOrders,
+  getLibrarianOrders,
+  getAllOrders,
+  getOrderById,
 };
