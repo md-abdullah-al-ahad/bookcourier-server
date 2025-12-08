@@ -103,34 +103,34 @@ const addBook = async (req, res) => {
  */
 const getAllBooks = async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = '', sort = 'newest' } = req.query;
+    const { page = 1, limit = 10, search = "", sort = "newest" } = req.query;
 
     const booksCollection = getCollection(COLLECTIONS.BOOKS);
 
     // Build query
-    const query = { status: 'published' };
+    const query = { status: "published" };
 
     // Add search by name (case-insensitive)
     if (search) {
-      query.name = { $regex: search, $options: 'i' };
+      query.name = { $regex: search, $options: "i" };
     }
 
     // Determine sort order
     let sortOption = {};
     switch (sort) {
-      case 'newest':
+      case "newest":
         sortOption = { createdAt: -1 };
         break;
-      case 'price_asc':
+      case "price_asc":
         sortOption = { price: 1 };
         break;
-      case 'price_desc':
+      case "price_desc":
         sortOption = { price: -1 };
         break;
-      case 'name_asc':
+      case "name_asc":
         sortOption = { name: 1 };
         break;
-      case 'name_desc':
+      case "name_desc":
         sortOption = { name: -1 };
         break;
       default:
@@ -163,16 +163,15 @@ const getAllBooks = async (req, res) => {
         totalCount,
         page: pageNum,
         totalPages,
-        limit: limitNum
-      }
+        limit: limitNum,
+      },
     });
-
   } catch (error) {
-    console.error('❌ Error getting books:', error);
+    console.error("❌ Error getting books:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to get books',
-      error: error.message
+      message: "Failed to get books",
+      error: error.message,
     });
   }
 };
@@ -190,68 +189,69 @@ const getBookById = async (req, res) => {
     if (!ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid book ID format'
+        message: "Invalid book ID format",
       });
     }
 
     const booksCollection = getCollection(COLLECTIONS.BOOKS);
 
     // Use aggregate to populate librarian info
-    const books = await booksCollection.aggregate([
-      { $match: { _id: new ObjectId(id) } },
-      {
-        $lookup: {
-          from: COLLECTIONS.USERS,
-          localField: 'librarian',
-          foreignField: '_id',
-          as: 'librarianDetails'
-        }
-      },
-      {
-        $unwind: {
-          path: '$librarianDetails',
-          preserveNullAndEmptyArrays: true
-        }
-      },
-      {
-        $project: {
-          name: 1,
-          author: 1,
-          image: 1,
-          price: 1,
-          status: 1,
-          category: 1,
-          description: 1,
-          createdAt: 1,
-          updatedAt: 1,
-          librarian: {
-            _id: '$librarianDetails._id',
-            name: '$librarianDetails.name',
-            email: '$librarianDetails.email',
-            photoURL: '$librarianDetails.photoURL'
-          }
-        }
-      }
-    ]).toArray();
+    const books = await booksCollection
+      .aggregate([
+        { $match: { _id: new ObjectId(id) } },
+        {
+          $lookup: {
+            from: COLLECTIONS.USERS,
+            localField: "librarian",
+            foreignField: "_id",
+            as: "librarianDetails",
+          },
+        },
+        {
+          $unwind: {
+            path: "$librarianDetails",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $project: {
+            name: 1,
+            author: 1,
+            image: 1,
+            price: 1,
+            status: 1,
+            category: 1,
+            description: 1,
+            createdAt: 1,
+            updatedAt: 1,
+            librarian: {
+              _id: "$librarianDetails._id",
+              name: "$librarianDetails.name",
+              email: "$librarianDetails.email",
+              photoURL: "$librarianDetails.photoURL",
+            },
+          },
+        },
+      ])
+      .toArray();
 
     if (books.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Book not found'
+        message: "Book not found",
       });
     }
 
     res.status(200).json({
       success: true,
-      data: books[0]
+      data: books[0],
     });
-
   } catch (error) {
-    console.error('❌ Error getting book:', error);
+    console.error("❌ Error getting book:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to get book details',
-      error: error.message
+      message: "Failed to get book details",
+      error: error.message,
     });
   }
 };
@@ -276,15 +276,14 @@ const getLibrarianBooks = async (req, res) => {
     res.status(200).json({
       success: true,
       count: books.length,
-      data: books
+      data: books,
     });
-
   } catch (error) {
-    console.error('❌ Error getting librarian books:', error);
+    console.error("❌ Error getting librarian books:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to get librarian books',
-      error: error.message
+      message: "Failed to get librarian books",
+      error: error.message,
     });
   }
 };
@@ -299,56 +298,313 @@ const getAllBooksForAdmin = async (req, res) => {
     const booksCollection = getCollection(COLLECTIONS.BOOKS);
 
     // Use aggregate to populate librarian info
-    const books = await booksCollection.aggregate([
-      {
-        $lookup: {
-          from: COLLECTIONS.USERS,
-          localField: 'librarian',
-          foreignField: '_id',
-          as: 'librarianDetails'
-        }
-      },
-      {
-        $unwind: {
-          path: '$librarianDetails',
-          preserveNullAndEmptyArrays: true
-        }
-      },
-      {
-        $project: {
-          name: 1,
-          author: 1,
-          image: 1,
-          price: 1,
-          status: 1,
-          category: 1,
-          description: 1,
-          createdAt: 1,
-          updatedAt: 1,
-          librarian: {
-            _id: '$librarianDetails._id',
-            name: '$librarianDetails.name',
-            email: '$librarianDetails.email',
-            photoURL: '$librarianDetails.photoURL',
-            role: '$librarianDetails.role'
-          }
-        }
-      },
-      { $sort: { createdAt: -1 } }
-    ]).toArray();
+    const books = await booksCollection
+      .aggregate([
+        {
+          $lookup: {
+            from: COLLECTIONS.USERS,
+            localField: "librarian",
+            foreignField: "_id",
+            as: "librarianDetails",
+          },
+        },
+        {
+          $unwind: {
+            path: "$librarianDetails",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $project: {
+            name: 1,
+            author: 1,
+            image: 1,
+            price: 1,
+            status: 1,
+            category: 1,
+            description: 1,
+            createdAt: 1,
+            updatedAt: 1,
+            librarian: {
+              _id: "$librarianDetails._id",
+              name: "$librarianDetails.name",
+              email: "$librarianDetails.email",
+              photoURL: "$librarianDetails.photoURL",
+              role: "$librarianDetails.role",
+            },
+          },
+        },
+        { $sort: { createdAt: -1 } },
+      ])
+      .toArray();
 
     res.status(200).json({
       success: true,
       count: books.length,
-      data: books
+      data: books,
     });
-
   } catch (error) {
-    console.error('❌ Error getting all books for admin:', error);
+    console.error("❌ Error getting all books for admin:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to get books',
-      error: error.message
+      message: "Failed to get books",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Update book (librarian can update their own books)
+ * @route PUT /api/books/:id
+ * @access Librarian/Admin only
+ */
+const updateBook = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, author, image, price, status, category, description } =
+      req.body;
+
+    // Validate ObjectId
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid book ID format",
+      });
+    }
+
+    const booksCollection = getCollection(COLLECTIONS.BOOKS);
+
+    // Find book and verify ownership
+    const book = await booksCollection.findOne({ _id: new ObjectId(id) });
+
+    if (!book) {
+      return res.status(404).json({
+        success: false,
+        message: "Book not found",
+      });
+    }
+
+    // Verify librarian ownership (unless user is admin)
+    const isOwner = book.librarian.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === "admin";
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only update your own books",
+      });
+    }
+
+    // Build update object
+    const updateData = {};
+    if (name) updateData.name = name.trim();
+    if (author) updateData.author = author.trim();
+    if (image) updateData.image = image.trim();
+    if (price !== undefined) {
+      if (isNaN(price) || price < 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Price must be a valid positive number",
+        });
+      }
+      updateData.price = parseFloat(price);
+    }
+    if (status) {
+      const validStatuses = [
+        "available",
+        "unavailable",
+        "out-of-stock",
+        "published",
+        "unpublished",
+      ];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid status. Must be one of: ${validStatuses.join(
+            ", "
+          )}`,
+        });
+      }
+      updateData.status = status;
+    }
+    if (category) updateData.category = category.trim();
+    if (description !== undefined) updateData.description = description.trim();
+
+    updateData.updatedAt = new Date();
+
+    // Update book
+    const result = await booksCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: updateData }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Book not found",
+      });
+    }
+
+    // Get updated book
+    const updatedBook = await booksCollection.findOne({
+      _id: new ObjectId(id),
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Book updated successfully",
+      data: updatedBook,
+    });
+  } catch (error) {
+    console.error("❌ Error updating book:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update book",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Delete book and cascade delete related data (admin only)
+ * @route DELETE /api/books/:id
+ * @access Admin only
+ */
+const deleteBook = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Validate ObjectId
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid book ID format",
+      });
+    }
+
+    const bookId = new ObjectId(id);
+
+    // Check if book exists
+    const booksCollection = getCollection(COLLECTIONS.BOOKS);
+    const book = await booksCollection.findOne({ _id: bookId });
+
+    if (!book) {
+      return res.status(404).json({
+        success: false,
+        message: "Book not found",
+      });
+    }
+
+    // Delete the book
+    const deleteResult = await booksCollection.deleteOne({ _id: bookId });
+
+    if (deleteResult.deletedCount === 0) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to delete book",
+      });
+    }
+
+    // Cascade delete: Remove all orders for this book
+    const ordersCollection = getCollection(COLLECTIONS.ORDERS);
+    await ordersCollection.deleteMany({ book: bookId });
+
+    // Cascade delete: Remove all wishlists for this book
+    const wishlistsCollection = getCollection(COLLECTIONS.WISHLISTS);
+    await wishlistsCollection.deleteMany({ book: bookId });
+
+    // Cascade delete: Remove all reviews for this book
+    const reviewsCollection = getCollection(COLLECTIONS.REVIEWS);
+    await reviewsCollection.deleteMany({ book: bookId });
+
+    res.status(200).json({
+      success: true,
+      message: "Book and all related data deleted successfully",
+    });
+  } catch (error) {
+    console.error("❌ Error deleting book:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete book",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Toggle book status between published and unpublished
+ * @route PATCH /api/books/:id/status
+ * @access Librarian/Admin only
+ */
+const toggleBookStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Validate ObjectId
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid book ID format",
+      });
+    }
+
+    const booksCollection = getCollection(COLLECTIONS.BOOKS);
+
+    // Find book and verify ownership
+    const book = await booksCollection.findOne({ _id: new ObjectId(id) });
+
+    if (!book) {
+      return res.status(404).json({
+        success: false,
+        message: "Book not found",
+      });
+    }
+
+    // Verify librarian ownership (unless user is admin)
+    const isOwner = book.librarian.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === "admin";
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only toggle status of your own books",
+      });
+    }
+
+    // Toggle status
+    const newStatus = book.status === "published" ? "unpublished" : "published";
+
+    // Update book status
+    const result = await booksCollection.updateOne(
+      { _id: new ObjectId(id) },
+      {
+        $set: {
+          status: newStatus,
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Book not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Book status changed to '${newStatus}' successfully`,
+      data: {
+        status: newStatus,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Error toggling book status:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to toggle book status",
+      error: error.message,
     });
   }
 };
@@ -359,6 +615,7 @@ module.exports = {
   getBookById,
   getLibrarianBooks,
   getAllBooksForAdmin,
-};
-
+  updateBook,
+  deleteBook,
+  toggleBookStatus,
 };

@@ -8,6 +8,9 @@ const {
   getBookById,
   getLibrarianBooks,
   getAllBooksForAdmin,
+  updateBook,
+  deleteBook,
+  toggleBookStatus,
 } = require("../controllers/bookController");
 
 /**
@@ -50,5 +53,26 @@ router.get("/admin/all", verifyToken, checkAdmin, getAllBooksForAdmin);
  * @access  Public
  */
 router.get("/:id", getBookById);
+
+/**
+ * @route   PUT /api/books/:id
+ * @desc    Update book (librarian can update their own books)
+ * @access  Librarian/Admin only
+ */
+router.put("/:id", verifyToken, checkLibrarian, updateBook);
+
+/**
+ * @route   DELETE /api/books/:id
+ * @desc    Delete book and all related data
+ * @access  Admin only
+ */
+router.delete("/:id", verifyToken, checkAdmin, deleteBook);
+
+/**
+ * @route   PATCH /api/books/:id/status
+ * @desc    Toggle book status between published and unpublished
+ * @access  Librarian/Admin only
+ */
+router.patch("/:id/status", verifyToken, checkLibrarian, toggleBookStatus);
 
 module.exports = router;
