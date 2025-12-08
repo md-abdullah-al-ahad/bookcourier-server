@@ -6,6 +6,9 @@ const { initializeFirebaseAdmin } = require("./config/firebase-admin");
 const { createIndexes } = require("./utils/dbHelpers");
 require("dotenv").config();
 
+// Import Routes
+const userRoutes = require("./routes/userRoutes");
+
 const app = express();
 
 // CORS Configuration
@@ -36,6 +39,9 @@ app.get("/", (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// API Routes
+app.use("/api/users", userRoutes);
 
 // Server
 const PORT = process.env.PORT || 5000;
