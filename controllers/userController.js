@@ -184,9 +184,67 @@ const updateUserRole = async (req, res) => {
   }
 };
 
+/**
+ * Get user statistics
+ * @route GET /api/users/stats
+ * @access Protected
+ */
+const getUserStats = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const ordersCollection = getCollection(COLLECTIONS.ORDERS);
+
+    // Aggregate user statistics
+    const stats = await ordersCollection
+      .aggregate([
+        {
+          $match: {
+            user: new ObjectId(userId),
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalOrders: { $sum: 1 },
+            totalSpent: { $sum: "$totalAmount" },
+            pendingOrders: {
+              $sum: {
+                $cond: [{ $eq: ["$orderStatus", "pending"] }, 1, 0],
+              },
+            },
+          },
+        },
+      ])
+      .toArray();
+
+    // If no orders found, return zero stats
+    const userStats =
+      stats.length > 0
+        ? stats[0]
+        : { totalOrders: 0, totalSpent: 0, pendingOrders: 0 };
+
+    // Remove the _id field
+    delete userStats._id;
+
+    res.status(200).json({
+      success: true,
+      data: userStats,
+    });
+  } catch (error) {
+    console.error("❌ Error getting user stats:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get user statistics",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getUserProfile,
   updateUserProfile,
   getAllUsers,
   updateUserRole,
+  getUserStats,
 };

@@ -766,6 +766,137 @@ const updatePaymentStatus = async (req, res) => {
   }
 };
 
+/**
+ * Get librarian statistics
+ * @route GET /api/orders/librarian/stats
+ * @access Librarian only
+ */
+const getLibrarianStats = async (req, res) => {
+  try {
+    const librarianId = req.user._id;
+
+    const booksCollection = getCollection(COLLECTIONS.BOOKS);
+    const ordersCollection = getCollection(COLLECTIONS.ORDERS);
+
+    // Count total books added by librarian
+    const totalBooks = await booksCollection.countDocuments({
+      librarian: new ObjectId(librarianId),
+    });
+
+    // Aggregate orders for librarian's books
+    const orderStats = await ordersCollection
+      .aggregate([
+        {
+          $match: {
+            librarian: new ObjectId(librarianId),
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalOrders: { $sum: 1 },
+            totalRevenue: { $sum: "$totalAmount" },
+          },
+        },
+      ])
+      .toArray();
+
+    const stats =
+      orderStats.length > 0
+        ? orderStats[0]
+        : { totalOrders: 0, totalRevenue: 0 };
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalBooks,
+        totalOrders: stats.totalOrders,
+        totalRevenue: stats.totalRevenue,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Error getting librarian stats:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get librarian statistics",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get admin statistics
+ * @route GET /api/orders/admin/stats
+ * @access Admin only
+ */
+const getAdminStats = async (req, res) => {
+  try {
+    const usersCollection = getCollection(COLLECTIONS.USERS);
+    const booksCollection = getCollection(COLLECTIONS.BOOKS);
+    const ordersCollection = getCollection(COLLECTIONS.ORDERS);
+
+    // Count total users
+    const totalUsers = await usersCollection.countDocuments();
+
+    // Count total books
+    const totalBooks = await booksCollection.countDocuments();
+
+    // Count total orders
+    const totalOrders = await ordersCollection.countDocuments();
+
+    // Aggregate revenue and orders by status
+    const revenueStats = await ordersCollection
+      .aggregate([
+        {
+          $group: {
+            _id: null,
+            totalRevenue: { $sum: "$totalAmount" },
+          },
+        },
+      ])
+      .toArray();
+
+    const totalRevenue =
+      revenueStats.length > 0 ? revenueStats[0].totalRevenue : 0;
+
+    // Group orders by status
+    const ordersByStatus = await ordersCollection
+      .aggregate([
+        {
+          $group: {
+            _id: "$orderStatus",
+            count: { $sum: 1 },
+          },
+        },
+      ])
+      .toArray();
+
+    // Convert ordersByStatus array to object
+    const statusBreakdown = {};
+    ordersByStatus.forEach((item) => {
+      statusBreakdown[item._id] = item.count;
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalUsers,
+        totalBooks,
+        totalOrders,
+        totalRevenue,
+        ordersByStatus: statusBreakdown,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Error getting admin stats:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get admin statistics",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   placeOrder,
   getUserOrders,
@@ -775,4 +906,6 @@ module.exports = {
   cancelOrder,
   updateOrderStatus,
   updatePaymentStatus,
+  getLibrarianStats,
+  getAdminStats,
 };

@@ -15,6 +15,8 @@ const {
   cancelOrder,
   updateOrderStatus,
   updatePaymentStatus,
+  getLibrarianStats,
+  getAdminStats,
 } = require("../controllers/orderController");
 
 /**
@@ -44,11 +46,25 @@ router.get(
 );
 
 /**
+ * @route   GET /api/orders/librarian/stats
+ * @desc    Get statistics for logged-in librarian (books, orders, revenue)
+ * @access  Librarian/Admin only
+ */
+router.get("/librarian/stats", verifyToken, checkLibrarian, getLibrarianStats);
+
+/**
  * @route   GET /api/orders/admin/all
  * @desc    Get all orders (admin only)
  * @access  Admin only
  */
 router.get("/admin/all", verifyToken, checkAdmin, getAllOrders);
+
+/**
+ * @route   GET /api/orders/admin/stats
+ * @desc    Get comprehensive admin statistics
+ * @access  Admin only
+ */
+router.get("/admin/stats", verifyToken, checkAdmin, getAdminStats);
 
 /**
  * @route   GET /api/orders/:id

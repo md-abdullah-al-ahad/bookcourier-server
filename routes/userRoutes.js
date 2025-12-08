@@ -7,6 +7,7 @@ const {
   updateUserProfile,
   getAllUsers,
   updateUserRole,
+  getUserStats,
 } = require("../controllers/userController");
 
 /**
@@ -15,6 +16,13 @@ const {
  * @access  Protected (any authenticated user)
  */
 router.get("/profile", verifyToken, checkUser, getUserProfile);
+
+/**
+ * @route   GET /api/users/stats
+ * @desc    Get current user statistics (orders, spending, etc.)
+ * @access  Protected (any authenticated user)
+ */
+router.get("/stats", verifyToken, checkUser, getUserStats);
 
 /**
  * @route   PUT /api/users/profile
