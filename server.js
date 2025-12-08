@@ -9,6 +9,7 @@ require("dotenv").config();
 // Import Routes
 const userRoutes = require("./routes/userRoutes");
 const bookRoutes = require("./routes/bookRoutes");
+const orderRoutes = require("./routes/orderRoutes");
 
 const app = express();
 
@@ -44,6 +45,7 @@ app.get("/", (req, res) => {
 // API Routes
 app.use("/api/users", userRoutes);
 app.use("/api/books", bookRoutes);
+app.use("/api/orders", orderRoutes);
 
 // Server
 const PORT = process.env.PORT || 5000;
