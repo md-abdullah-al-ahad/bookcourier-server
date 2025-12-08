@@ -1,6 +1,7 @@
 const { ObjectId } = require("mongodb");
 const { getCollection } = require("../utils/dbHelpers");
 const COLLECTIONS = require("../config/collections");
+const { successResponse, errorResponse } = require("../utils/response");
 
 /**
  * Get current user profile
@@ -15,23 +16,13 @@ const getUserProfile = async (req, res) => {
     const user = await usersCollection.findOne({ _id: new ObjectId(userId) });
 
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
+      return errorResponse(res, "User not found", 404);
     }
 
-    res.status(200).json({
-      success: true,
-      data: user,
-    });
+    return successResponse(res, user, "User profile retrieved successfully");
   } catch (error) {
     console.error("❌ Error getting user profile:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to get user profile",
-      error: error.message,
-    });
+    return errorResponse(res, "Failed to get user profile", 500, error.message);
   }
 };
 
@@ -51,10 +42,11 @@ const updateUserProfile = async (req, res) => {
     if (photoURL !== undefined) updateData.photoURL = photoURL;
 
     if (Object.keys(updateData).length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "No fields to update. Provide name or photoURL.",
-      });
+      return errorResponse(
+        res,
+        "No fields to update. Provide name or photoURL.",
+        400
+      );
     }
 
     updateData.updatedAt = new Date();
@@ -66,10 +58,7 @@ const updateUserProfile = async (req, res) => {
     );
 
     if (result.matchedCount === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
+      return errorResponse(res, "User not found", 404);
     }
 
     // Get updated user
@@ -77,18 +66,15 @@ const updateUserProfile = async (req, res) => {
       _id: new ObjectId(userId),
     });
 
-    res.status(200).json({
-      success: true,
-      message: "Profile updated successfully",
-      data: updatedUser,
-    });
+    return successResponse(res, updatedUser, "Profile updated successfully");
   } catch (error) {
     console.error("❌ Error updating user profile:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to update user profile",
-      error: error.message,
-    });
+    return errorResponse(
+      res,
+      "Failed to update user profile",
+      500,
+      error.message
+    );
   }
 };
 
@@ -110,18 +96,14 @@ const getAllUsers = async (req, res) => {
       .sort({ createdAt: -1 })
       .toArray();
 
-    res.status(200).json({
-      success: true,
-      count: users.length,
-      data: users,
-    });
+    return successResponse(
+      res,
+      { users, count: users.length },
+      "Users retrieved successfully"
+    );
   } catch (error) {
     console.error("❌ Error getting all users:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to get users",
-      error: error.message,
-    });
+    return errorResponse(res, "Failed to get users", 500, error.message);
   }
 };
 
@@ -138,18 +120,16 @@ const updateUserRole = async (req, res) => {
     // Validate role
     const validRoles = ["user", "librarian", "admin"];
     if (!role || !validRoles.includes(role)) {
-      return res.status(400).json({
-        success: false,
-        message: `Invalid role. Must be one of: ${validRoles.join(", ")}`,
-      });
+      return errorResponse(
+        res,
+        `Invalid role. Must be one of: ${validRoles.join(", ")}`,
+        400
+      );
     }
 
     // Validate userId format
     if (!ObjectId.isValid(userId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid user ID format",
-      });
+      return errorResponse(res, "Invalid user ID format", 400);
     }
 
     const usersCollection = getCollection(COLLECTIONS.USERS);
@@ -164,23 +144,17 @@ const updateUserRole = async (req, res) => {
     );
 
     if (result.matchedCount === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
+      return errorResponse(res, "User not found", 404);
     }
 
-    res.status(200).json({
-      success: true,
-      message: `User role updated to '${role}' successfully`,
-    });
+    return successResponse(
+      res,
+      null,
+      `User role updated to '${role}' successfully`
+    );
   } catch (error) {
     console.error("❌ Error updating user role:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to update user role",
-      error: error.message,
-    });
+    return errorResponse(res, "Failed to update user role", 500, error.message);
   }
 };
 
@@ -227,17 +201,19 @@ const getUserStats = async (req, res) => {
     // Remove the _id field
     delete userStats._id;
 
-    res.status(200).json({
-      success: true,
-      data: userStats,
-    });
+    return successResponse(
+      res,
+      userStats,
+      "User statistics retrieved successfully"
+    );
   } catch (error) {
     console.error("❌ Error getting user stats:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to get user statistics",
-      error: error.message,
-    });
+    return errorResponse(
+      res,
+      "Failed to get user statistics",
+      500,
+      error.message
+    );
   }
 };
 

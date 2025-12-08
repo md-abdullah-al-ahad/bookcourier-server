@@ -1,6 +1,7 @@
 const { ObjectId } = require("mongodb");
 const { getCollection } = require("../utils/dbHelpers");
 const COLLECTIONS = require("../config/collections");
+const { successResponse, errorResponse } = require("../utils/response");
 
 /**
  * Place a new order for a book
@@ -22,35 +23,27 @@ const placeOrder = async (req, res) => {
     const missingFields = requiredFields.filter((field) => !req.body[field]);
 
     if (missingFields.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: `Missing required fields: ${missingFields.join(", ")}`,
-      });
+      return errorResponse(
+        res,
+        `Missing required fields: ${missingFields.join(", ")}`,
+        400
+      );
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(userEmail)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid email format",
-      });
+      return errorResponse(res, "Invalid email format", 400);
     }
 
     // Validate phone number (basic validation)
     if (phoneNumber.length < 10) {
-      return res.status(400).json({
-        success: false,
-        message: "Phone number must be at least 10 digits",
-      });
+      return errorResponse(res, "Phone number must be at least 10 digits", 400);
     }
 
     // Validate bookId format
     if (!ObjectId.isValid(bookId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid book ID format",
-      });
+      return errorResponse(res, "Invalid book ID format", 400);
     }
 
     // Find book and verify it exists and is published
@@ -58,18 +51,15 @@ const placeOrder = async (req, res) => {
     const book = await booksCollection.findOne({ _id: new ObjectId(bookId) });
 
     if (!book) {
-      return res.status(404).json({
-        success: false,
-        message: "Book not found",
-      });
+      return errorResponse(res, "Book not found", 404);
     }
 
     if (book.status !== "published") {
-      return res.status(400).json({
-        success: false,
-        message:
-          "This book is not available for order. Only published books can be ordered.",
-      });
+      return errorResponse(
+        res,
+        "This book is not available for order. Only published books can be ordered.",
+        400
+      );
     }
 
     // Create order document
@@ -92,10 +82,7 @@ const placeOrder = async (req, res) => {
     const result = await ordersCollection.insertOne(orderDocument);
 
     if (!result.acknowledged) {
-      return res.status(500).json({
-        success: false,
-        message: "Failed to place order",
-      });
+      return errorResponse(res, "Failed to place order", 500);
     }
 
     // Return created order
@@ -104,18 +91,10 @@ const placeOrder = async (req, res) => {
       ...orderDocument,
     };
 
-    res.status(201).json({
-      success: true,
-      message: "Order placed successfully",
-      data: createdOrder,
-    });
+    return successResponse(res, createdOrder, "Order placed successfully", 201);
   } catch (error) {
     console.error("❌ Error placing order:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to place order",
-      error: error.message,
-    });
+    return errorResponse(res, "Failed to place order", 500, error.message);
   }
 };
 
@@ -172,18 +151,10 @@ const getUserOrders = async (req, res) => {
       ])
       .toArray();
 
-    res.status(200).json({
-      success: true,
-      count: orders.length,
-      data: orders,
-    });
+    return successResponse(res, { count: orders.length, orders });
   } catch (error) {
     console.error("❌ Error getting user orders:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to get orders",
-      error: error.message,
-    });
+    return errorResponse(res, "Failed to get orders", 500, error.message);
   }
 };
 
@@ -260,18 +231,15 @@ const getLibrarianOrders = async (req, res) => {
       ])
       .toArray();
 
-    res.status(200).json({
-      success: true,
-      count: orders.length,
-      data: orders,
-    });
+    return successResponse(res, { count: orders.length, orders });
   } catch (error) {
     console.error("❌ Error getting librarian orders:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to get librarian orders",
-      error: error.message,
-    });
+    return errorResponse(
+      res,
+      "Failed to get librarian orders",
+      500,
+      error.message
+    );
   }
 };
 
@@ -365,18 +333,10 @@ const getAllOrders = async (req, res) => {
       ])
       .toArray();
 
-    res.status(200).json({
-      success: true,
-      count: orders.length,
-      data: orders,
-    });
+    return successResponse(res, { count: orders.length, orders });
   } catch (error) {
     console.error("❌ Error getting all orders:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to get orders",
-      error: error.message,
-    });
+    return errorResponse(res, "Failed to get orders", 500, error.message);
   }
 };
 
@@ -391,10 +351,7 @@ const getOrderById = async (req, res) => {
 
     // Validate ObjectId
     if (!ObjectId.isValid(id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid order ID format",
-      });
+      return errorResponse(res, "Invalid order ID format", 400);
     }
 
     const ordersCollection = getCollection(COLLECTIONS.ORDERS);
@@ -463,10 +420,7 @@ const getOrderById = async (req, res) => {
       .toArray();
 
     if (orders.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found",
-      });
+      return errorResponse(res, "Order not found", 404);
     }
 
     const order = orders[0];
@@ -477,23 +431,22 @@ const getOrderById = async (req, res) => {
     const isAdmin = req.user.role === "admin";
 
     if (!isOwner && !isLibrarian && !isAdmin) {
-      return res.status(403).json({
-        success: false,
-        message: "You do not have permission to view this order",
-      });
+      return errorResponse(
+        res,
+        "You do not have permission to view this order",
+        403
+      );
     }
 
-    res.status(200).json({
-      success: true,
-      data: order,
-    });
+    return successResponse(res, order, "Order details retrieved successfully");
   } catch (error) {
     console.error("❌ Error getting order:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to get order details",
-      error: error.message,
-    });
+    return errorResponse(
+      res,
+      "Failed to get order details",
+      500,
+      error.message
+    );
   }
 };
 
@@ -508,10 +461,7 @@ const cancelOrder = async (req, res) => {
 
     // Validate ObjectId
     if (!ObjectId.isValid(id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid order ID format",
-      });
+      return errorResponse(res, "Invalid order ID format", 400);
     }
 
     const ordersCollection = getCollection(COLLECTIONS.ORDERS);
@@ -520,26 +470,21 @@ const cancelOrder = async (req, res) => {
     const order = await ordersCollection.findOne({ _id: new ObjectId(id) });
 
     if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found",
-      });
+      return errorResponse(res, "Order not found", 404);
     }
 
     // Verify user ownership
     if (order.user.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: "You can only cancel your own orders",
-      });
+      return errorResponse(res, "You can only cancel your own orders", 403);
     }
 
     // Check if order status is pending
     if (order.orderStatus !== "pending") {
-      return res.status(400).json({
-        success: false,
-        message: `Cannot cancel order with status '${order.orderStatus}'. Only pending orders can be cancelled.`,
-      });
+      return errorResponse(
+        res,
+        `Cannot cancel order with status '${order.orderStatus}'. Only pending orders can be cancelled.`,
+        400
+      );
     }
 
     // Update order status to cancelled
@@ -554,23 +499,13 @@ const cancelOrder = async (req, res) => {
     );
 
     if (result.matchedCount === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found",
-      });
+      return errorResponse(res, "Order not found", 404);
     }
 
-    res.status(200).json({
-      success: true,
-      message: "Order cancelled successfully",
-    });
+    return successResponse(res, null, "Order cancelled successfully");
   } catch (error) {
     console.error("❌ Error cancelling order:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to cancel order",
-      error: error.message,
-    });
+    return errorResponse(res, "Failed to cancel order", 500, error.message);
   }
 };
 
@@ -586,26 +521,21 @@ const updateOrderStatus = async (req, res) => {
 
     // Validate ObjectId
     if (!ObjectId.isValid(id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid order ID format",
-      });
+      return errorResponse(res, "Invalid order ID format", 400);
     }
 
     // Validate new status
     if (!newStatus) {
-      return res.status(400).json({
-        success: false,
-        message: "Status is required",
-      });
+      return errorResponse(res, "Status is required", 400);
     }
 
     const validStatuses = ["pending", "shipped", "delivered", "cancelled"];
     if (!validStatuses.includes(newStatus)) {
-      return res.status(400).json({
-        success: false,
-        message: `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
-      });
+      return errorResponse(
+        res,
+        `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
+        400
+      );
     }
 
     const ordersCollection = getCollection(COLLECTIONS.ORDERS);
@@ -614,10 +544,7 @@ const updateOrderStatus = async (req, res) => {
     const order = await ordersCollection.findOne({ _id: new ObjectId(id) });
 
     if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found",
-      });
+      return errorResponse(res, "Order not found", 404);
     }
 
     // Verify librarian ownership (unless admin)
@@ -625,10 +552,11 @@ const updateOrderStatus = async (req, res) => {
     const isAdmin = req.user.role === "admin";
 
     if (!isLibrarian && !isAdmin) {
-      return res.status(403).json({
-        success: false,
-        message: "You can only update orders for your own books",
-      });
+      return errorResponse(
+        res,
+        "You can only update orders for your own books",
+        403
+      );
     }
 
     // Validate status transitions
@@ -643,12 +571,13 @@ const updateOrderStatus = async (req, res) => {
     };
 
     if (!validTransitions[currentStatus].includes(newStatus)) {
-      return res.status(400).json({
-        success: false,
-        message: `Invalid status transition. Cannot change from '${currentStatus}' to '${newStatus}'. Valid transitions: ${
+      return errorResponse(
+        res,
+        `Invalid status transition. Cannot change from '${currentStatus}' to '${newStatus}'. Valid transitions: ${
           validTransitions[currentStatus].join(", ") || "none"
         }`,
-      });
+        400
+      );
     }
 
     // Update order status
@@ -663,10 +592,7 @@ const updateOrderStatus = async (req, res) => {
     );
 
     if (result.matchedCount === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found",
-      });
+      return errorResponse(res, "Order not found", 404);
     }
 
     // Get updated order
@@ -674,18 +600,19 @@ const updateOrderStatus = async (req, res) => {
       _id: new ObjectId(id),
     });
 
-    res.status(200).json({
-      success: true,
-      message: `Order status updated to '${newStatus}' successfully`,
-      data: updatedOrder,
-    });
+    return successResponse(
+      res,
+      updatedOrder,
+      `Order status updated to '${newStatus}' successfully`
+    );
   } catch (error) {
     console.error("❌ Error updating order status:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to update order status",
-      error: error.message,
-    });
+    return errorResponse(
+      res,
+      "Failed to update order status",
+      500,
+      error.message
+    );
   }
 };
 
@@ -700,10 +627,7 @@ const updatePaymentStatus = async (req, res) => {
 
     // Validate ObjectId
     if (!ObjectId.isValid(id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid order ID format",
-      });
+      return errorResponse(res, "Invalid order ID format", 400);
     }
 
     const ordersCollection = getCollection(COLLECTIONS.ORDERS);
@@ -712,26 +636,25 @@ const updatePaymentStatus = async (req, res) => {
     const order = await ordersCollection.findOne({ _id: new ObjectId(id) });
 
     if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found",
-      });
+      return errorResponse(res, "Order not found", 404);
     }
 
     // Verify user ownership
     if (order.user.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: "You can only update payment for your own orders",
-      });
+      return errorResponse(
+        res,
+        "You can only update payment for your own orders",
+        403
+      );
     }
 
     // Check if already paid
     if (order.paymentStatus === "paid") {
-      return res.status(400).json({
-        success: false,
-        message: "Payment has already been completed for this order",
-      });
+      return errorResponse(
+        res,
+        "Payment has already been completed for this order",
+        400
+      );
     }
 
     // Update payment status to paid
@@ -746,23 +669,18 @@ const updatePaymentStatus = async (req, res) => {
     );
 
     if (result.matchedCount === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found",
-      });
+      return errorResponse(res, "Order not found", 404);
     }
 
-    res.status(200).json({
-      success: true,
-      message: "Payment status updated successfully",
-    });
+    return successResponse(res, null, "Payment status updated successfully");
   } catch (error) {
     console.error("❌ Error updating payment status:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to update payment status",
-      error: error.message,
-    });
+    return errorResponse(
+      res,
+      "Failed to update payment status",
+      500,
+      error.message
+    );
   }
 };
 
@@ -806,21 +724,19 @@ const getLibrarianStats = async (req, res) => {
         ? orderStats[0]
         : { totalOrders: 0, totalRevenue: 0 };
 
-    res.status(200).json({
-      success: true,
-      data: {
-        totalBooks,
-        totalOrders: stats.totalOrders,
-        totalRevenue: stats.totalRevenue,
-      },
+    return successResponse(res, {
+      totalBooks,
+      totalOrders: stats.totalOrders,
+      totalRevenue: stats.totalRevenue,
     });
   } catch (error) {
     console.error("❌ Error getting librarian stats:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to get librarian statistics",
-      error: error.message,
-    });
+    return errorResponse(
+      res,
+      "Failed to get librarian statistics",
+      500,
+      error.message
+    );
   }
 };
 
@@ -877,23 +793,21 @@ const getAdminStats = async (req, res) => {
       statusBreakdown[item._id] = item.count;
     });
 
-    res.status(200).json({
-      success: true,
-      data: {
-        totalUsers,
-        totalBooks,
-        totalOrders,
-        totalRevenue,
-        ordersByStatus: statusBreakdown,
-      },
+    return successResponse(res, {
+      totalUsers,
+      totalBooks,
+      totalOrders,
+      totalRevenue,
+      ordersByStatus: statusBreakdown,
     });
   } catch (error) {
     console.error("❌ Error getting admin stats:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to get admin statistics",
-      error: error.message,
-    });
+    return errorResponse(
+      res,
+      "Failed to get admin statistics",
+      500,
+      error.message
+    );
   }
 };
 
