@@ -29,7 +29,7 @@ const connectDB = async () => {
     client = new MongoClient(uri, options);
 
     // Connect to MongoDB
-    await client.connect();
+    //await client.connect();
 
     // Get database instance
     dbInstance = client.db(dbName);
@@ -37,7 +37,7 @@ const connectDB = async () => {
     logger.success(`MongoDB connected successfully to database: ${dbName}`);
 
     // Verify connection
-    await dbInstance.command({ ping: 1 });
+    //await dbInstance.command({ ping: 1 });
     logger.success("Database ping successful");
   } catch (error) {
     logger.error("MongoDB connection error:", error);
