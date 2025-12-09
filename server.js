@@ -139,8 +139,13 @@ app.use("/api/reviews", reviewRoutes);
 // Server
 const PORT = process.env.PORT || 5000;
 
-// Connect to database and start server
-const startServer = async () => {
+// Initialize flag
+let isInitialized = false;
+
+// Initialize database and Firebase
+const initialize = async () => {
+  if (isInitialized) return;
+
   try {
     // Connect to MongoDB
     await connectDB();
@@ -151,19 +156,35 @@ const startServer = async () => {
     // Initialize Firebase Admin
     initializeFirebaseAdmin();
 
-    // Start Express server only in non-Vercel environment
-    if (process.env.VERCEL !== "1") {
-      app.listen(PORT, () => {
-        logger.server(`BookCourier server is running on port ${PORT}`);
-      });
-    }
+    isInitialized = true;
+    logger.success("Server initialized successfully");
   } catch (error) {
-    logger.error("Failed to start server:", error);
-    process.exit(1);
+    logger.error("Failed to initialize server:", error);
+    throw error;
   }
 };
 
-startServer();
+// Middleware to ensure initialization before handling requests
+app.use(async (req, res, next) => {
+  try {
+    await initialize();
+    next();
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server initialization failed",
+      error: error.message,
+    });
+  }
+});
+
+// Start Express server only in local development
+if (process.env.NODE_ENV !== "production" && process.env.VERCEL !== "1") {
+  app.listen(PORT, async () => {
+    await initialize();
+    logger.server(`BookCourier server is running on port ${PORT}`);
+  });
+}
 
 // Export app for Vercel serverless functions
 module.exports = app;
