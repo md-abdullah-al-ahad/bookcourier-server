@@ -8,6 +8,7 @@ const {
   getAllUsers,
   updateUserRole,
   getUserStats,
+  markPasswordSet,
 } = require("../controllers/userController");
 
 /**
@@ -30,6 +31,13 @@ router.get("/stats", verifyToken, checkUser, getUserStats);
  * @access  Protected (any authenticated user)
  */
 router.put("/profile", verifyToken, checkUser, updateUserProfile);
+
+/**
+ * @route   POST /api/users/password-set
+ * @desc    Mark that user has set a password (called after setting password via Firebase)
+ * @access  Protected (any authenticated user)
+ */
+router.post("/password-set", verifyToken, checkUser, markPasswordSet);
 
 /**
  * @route   GET /api/users/all

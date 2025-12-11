@@ -83,17 +83,24 @@ const verifyToken = async (req, res, next) => {
       if (user) {
         await usersCollection.updateOne({ _id: user._id }, { $set: { uid } });
         logger.success(`Updated uid for existing user: ${email}`);
+        // Re-fetch user to get the updated document
+        user = await usersCollection.findOne({ _id: user._id });
       }
     }
 
     // If user still doesn't exist, create new user document
     if (!user) {
+      // Check if user signed in with password provider
+      const hasPasswordProvider = decodedToken.firebase.sign_in_provider === 'password';
+      
       const newUser = {
         uid,
         name: name || decodedToken.displayName || email.split("@")[0],
         email,
         photoURL: picture || decodedToken.picture || null,
         role: "user",
+        hasPassword: hasPasswordProvider,
+        passwordRequired: !hasPasswordProvider, // Require password if using social login
         createdAt: new Date(),
       };
 

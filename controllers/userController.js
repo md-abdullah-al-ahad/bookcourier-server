@@ -217,10 +217,57 @@ const getUserStats = async (req, res) => {
   }
 };
 
+/**
+ * Mark user password as set
+ * @route POST /api/users/password-set
+ * @access Protected
+ */
+const markPasswordSet = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const usersCollection = getCollection(COLLECTIONS.USERS);
+    const result = await usersCollection.updateOne(
+      { _id: new ObjectId(userId) },
+      {
+        $set: {
+          hasPassword: true,
+          passwordRequired: false,
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return errorResponse(res, "User not found", 404);
+    }
+
+    // Get updated user
+    const updatedUser = await usersCollection.findOne({
+      _id: new ObjectId(userId),
+    });
+
+    return successResponse(
+      res,
+      updatedUser,
+      "Password status updated successfully"
+    );
+  } catch (error) {
+    console.error("❌ Error marking password as set:", error);
+    return errorResponse(
+      res,
+      "Failed to update password status",
+      500,
+      error.message
+    );
+  }
+};
+
 module.exports = {
   getUserProfile,
   updateUserProfile,
   getAllUsers,
   updateUserRole,
   getUserStats,
+  markPasswordSet,
 };
