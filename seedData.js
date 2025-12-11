@@ -68,6 +68,15 @@ const seedData = async () => {
         role: "admin",
         createdAt: new Date(),
       },
+      {
+        _id: new ObjectId(),
+        uid: "admin2_firebase_uid",
+        name: "Abdullah Al Ahad",
+        email: "abdullah.cseruet@gmail.com",
+        photoURL: null,
+        role: "admin",
+        createdAt: new Date(),
+      },
     ];
 
     await db.collection("users").insertMany(users);
