@@ -75,7 +75,18 @@ const verifyToken = async (req, res, next) => {
     const usersCollection = getCollection(COLLECTIONS.USERS);
     let user = await usersCollection.findOne({ uid });
 
-    // If user doesn't exist, create new user document
+    // If user doesn't exist, check if they exist by email (for seed data migration)
+    if (!user) {
+      user = await usersCollection.findOne({ email });
+
+      // If found by email, update the uid to match Firebase uid
+      if (user) {
+        await usersCollection.updateOne({ _id: user._id }, { $set: { uid } });
+        logger.success(`Updated uid for existing user: ${email}`);
+      }
+    }
+
+    // If user still doesn't exist, create new user document
     if (!user) {
       const newUser = {
         uid,
