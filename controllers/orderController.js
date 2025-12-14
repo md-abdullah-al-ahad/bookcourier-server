@@ -811,6 +811,48 @@ const getAdminStats = async (req, res) => {
   }
 };
 
+/**
+ * Check if user can review a book (must have ordered it)
+ * @route GET /api/orders/can-review/:bookId
+ * @access Protected (authenticated user)
+ */
+const canReviewBook = async (req, res) => {
+  try {
+    const { bookId } = req.params;
+    const userId = req.user._id;
+
+    // Validate bookId
+    if (!ObjectId.isValid(bookId)) {
+      return errorResponse(res, "Invalid book ID format", 400);
+    }
+
+    const ordersCollection = getCollection(COLLECTIONS.ORDERS);
+
+    // Check if user has ordered this book
+    const order = await ordersCollection.findOne({
+      user: new ObjectId(userId),
+      book: new ObjectId(bookId),
+      orderStatus: { $in: ["delivered", "pending", "shipped"] },
+    });
+
+    return successResponse(
+      res,
+      { canReview: !!order },
+      order
+        ? "User can review this book"
+        : "User has not ordered this book"
+    );
+  } catch (error) {
+    console.error("❌ Error checking review eligibility:", error);
+    return errorResponse(
+      res,
+      "Failed to check review eligibility",
+      500,
+      error.message
+    );
+  }
+};
+
 module.exports = {
   placeOrder,
   getUserOrders,
@@ -822,4 +864,5 @@ module.exports = {
   updatePaymentStatus,
   getLibrarianStats,
   getAdminStats,
+  canReviewBook,
 };

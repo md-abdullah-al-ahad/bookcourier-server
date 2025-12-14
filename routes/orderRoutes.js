@@ -18,6 +18,7 @@ const {
   updatePaymentStatus,
   getLibrarianStats,
   getAdminStats,
+  canReviewBook,
 } = require("../controllers/orderController");
 
 /**
@@ -66,6 +67,13 @@ router.get("/admin/all", verifyToken, checkAdmin, getAllOrders);
  * @access  Admin only
  */
 router.get("/admin/stats", verifyToken, checkAdmin, getAdminStats);
+
+/**
+ * @route   GET /api/orders/can-review/:bookId
+ * @desc    Check if user can review a book (must have ordered it)
+ * @access  Protected (authenticated user)
+ */
+router.get("/can-review/:bookId", verifyToken, checkUser, canReviewBook);
 
 /**
  * @route   GET /api/orders/:id

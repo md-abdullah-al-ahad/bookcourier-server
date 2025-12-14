@@ -38,7 +38,7 @@ const addBook = async (req, res) => {
     }
 
     // Validate status
-    const validStatuses = ["available", "unavailable", "out-of-stock"];
+    const validStatuses = ["published", "unpublished"];
     if (!validStatuses.includes(status)) {
       return errorResponse(
         res,
@@ -54,7 +54,7 @@ const addBook = async (req, res) => {
     const bookDocument = {
       name: name.trim(),
       author: author.trim(),
-      image: image.trim(),
+      imageURL: image.trim(),
       price: parseFloat(price),
       status,
       category: category.trim(),
@@ -200,7 +200,7 @@ const getBookById = async (req, res) => {
           $project: {
             name: 1,
             author: 1,
-            image: 1,
+            imageURL: 1,
             price: 1,
             status: 1,
             category: 1,
@@ -296,7 +296,7 @@ const getAllBooksForAdmin = async (req, res) => {
           $project: {
             name: 1,
             author: 1,
-            image: 1,
+            imageURL: 1,
             price: 1,
             status: 1,
             category: 1,
@@ -364,7 +364,7 @@ const updateBook = async (req, res) => {
     const updateData = {};
     if (name) updateData.name = name.trim();
     if (author) updateData.author = author.trim();
-    if (image) updateData.image = image.trim();
+    if (image) updateData.imageURL = image.trim();
     if (price !== undefined) {
       if (isNaN(price) || price < 0) {
         return errorResponse(res, "Price must be a valid positive number", 400);
@@ -372,13 +372,7 @@ const updateBook = async (req, res) => {
       updateData.price = parseFloat(price);
     }
     if (status) {
-      const validStatuses = [
-        "available",
-        "unavailable",
-        "out-of-stock",
-        "published",
-        "unpublished",
-      ];
+      const validStatuses = ["published", "unpublished"];
       if (!validStatuses.includes(status)) {
         return errorResponse(
           res,

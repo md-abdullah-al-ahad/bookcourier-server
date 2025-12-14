@@ -91,8 +91,9 @@ const verifyToken = async (req, res, next) => {
     // If user still doesn't exist, create new user document
     if (!user) {
       // Check if user signed in with password provider
-      const hasPasswordProvider = decodedToken.firebase.sign_in_provider === 'password';
-      
+      const hasPasswordProvider =
+        decodedToken.firebase.sign_in_provider === "password";
+
       const newUser = {
         uid,
         name: name || decodedToken.displayName || email.split("@")[0],
