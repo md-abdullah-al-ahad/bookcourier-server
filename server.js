@@ -34,6 +34,7 @@ const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:5173", // Vite default dev server
   "http://localhost:5174",
+  "https://bookcourier-client-xi.vercel.app", // Production frontend
 ];
 
 const corsOptions = {
