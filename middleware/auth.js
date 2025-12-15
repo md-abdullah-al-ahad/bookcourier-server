@@ -118,6 +118,19 @@ const verifyToken = async (req, res, next) => {
       }
     }
 
+    // Keep Firebase custom claims in sync with MongoDB role (best-effort)
+    try {
+      const auth = getAuth();
+      const firebaseUser = await auth.getUser(uid);
+      const currentClaimRole = firebaseUser.customClaims?.role;
+      if (currentClaimRole !== user.role) {
+        await auth.setCustomUserClaims(uid, { role: user.role });
+      }
+    } catch (claimError) {
+      logger.error("Failed to sync Firebase custom claims:", claimError);
+      // Continue without failing the request
+    }
+
     // Attach user to request object
     req.user = user;
 

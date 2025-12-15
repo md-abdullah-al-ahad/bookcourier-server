@@ -153,8 +153,10 @@ const updateUserRole = async (req, res) => {
       }
     );
 
-    // Sync Firebase custom claims so role stays in sync across services
+    // Sync Firebase custom claims so role stays in sync across services.
+    // MongoDB is the source of truth; we don't fail the request if Firebase sync has a transient issue.
     const auth = getAuth();
+    let firebaseSynced = false;
     try {
       let targetUid = user.uid;
 
@@ -169,20 +171,17 @@ const updateUserRole = async (req, res) => {
       }
 
       await auth.setCustomUserClaims(targetUid, { role });
+      firebaseSynced = true;
     } catch (firebaseError) {
       logger.error("Failed to sync user role to Firebase:", firebaseError);
-      return errorResponse(
-        res,
-        "Role updated in database but failed to sync with Firebase",
-        500,
-        firebaseError.message
-      );
     }
 
     return successResponse(
       res,
-      { userId, role },
-      `User role updated to '${role}' successfully`
+      { userId, role, firebaseSynced },
+      firebaseSynced
+        ? `User role updated to '${role}' successfully`
+        : `User role updated to '${role}' (Firebase will sync on next login)`
     );
   } catch (error) {
     console.error("❌ Error updating user role:", error);
