@@ -23,6 +23,13 @@ const reviewRoutes = require("./routes/reviewRoutes");
 
 const app = express();
 
+// Ensure database and Firebase are initialized exactly once (works for serverless too)
+const initializationPromise = (async () => {
+  await connectDB();
+  await createIndexes();
+  initializeFirebaseAdmin();
+})();
+
 /**
  * CORS Configuration
  * Cross-Origin Resource Sharing settings to allow requests from specific origins
@@ -114,10 +121,19 @@ app.use(generalLimiter);
 // Request Logger Middleware (logs all incoming requests)
 app.use(requestLogger);
 
-// Make database accessible to routes
-app.use((req, res, next) => {
-  req.db = getDB;
-  next();
+// Wait for DB/Firebase initialization before handling requests
+app.use(async (req, res, next) => {
+  try {
+    await initializationPromise;
+    req.db = getDB();
+    next();
+  } catch (error) {
+    logger.error("Failed to initialize server resources", error);
+    res.status(500).json({
+      success: false,
+      message: "Server is initializing resources. Please try again shortly.",
+    });
+  }
 });
 
 // Test route
@@ -140,34 +156,22 @@ app.use("/api/reviews", reviewRoutes);
 // Server
 const PORT = process.env.PORT || 5000;
 
-// Connect to database and start server
-const startServer = async () => {
-  try {
-    // Connect to MongoDB
-    await connectDB();
-
-    // Create database indexes
-    await createIndexes();
-
-    // Initialize Firebase Admin
-    initializeFirebaseAdmin();
-
-    // Start Express server only in non-Vercel environment
-    if (process.env.VERCEL !== "1") {
+// Start Express server only in non-Vercel environment
+if (process.env.VERCEL !== "1") {
+  initializationPromise
+    .then(() => {
       app.listen(PORT, () => {
         logger.server(`BookCourier server is running on port ${PORT}`);
       });
-    }
-  } catch (error) {
-    logger.error("Failed to start server:", error);
-    // Don't exit in production/Vercel
-    if (process.env.NODE_ENV !== "production") {
-      process.exit(1);
-    }
-  }
-};
-
-startServer();
+    })
+    .catch((error) => {
+      logger.error("Failed to start server:", error);
+      // Don't exit in production/Vercel
+      if (process.env.NODE_ENV !== "production") {
+        process.exit(1);
+      }
+    });
+}
 
 // Export app for Vercel serverless functions
 module.exports = app;

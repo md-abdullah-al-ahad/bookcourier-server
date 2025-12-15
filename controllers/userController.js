@@ -2,6 +2,8 @@ const { ObjectId } = require("mongodb");
 const { getCollection } = require("../utils/dbHelpers");
 const COLLECTIONS = require("../config/collections");
 const { successResponse, errorResponse } = require("../utils/response");
+const { getAuth } = require("../config/firebase-admin");
+const logger = require("../utils/logger");
 
 /**
  * Get current user profile
@@ -133,8 +135,16 @@ const updateUserRole = async (req, res) => {
     }
 
     const usersCollection = getCollection(COLLECTIONS.USERS);
-    const result = await usersCollection.updateOne(
-      { _id: new ObjectId(userId) },
+    const userObjectId = new ObjectId(userId);
+    const user = await usersCollection.findOne({ _id: userObjectId });
+
+    if (!user) {
+      return errorResponse(res, "User not found", 404);
+    }
+
+    // Update role in MongoDB
+    await usersCollection.updateOne(
+      { _id: userObjectId },
       {
         $set: {
           role,
@@ -143,13 +153,35 @@ const updateUserRole = async (req, res) => {
       }
     );
 
-    if (result.matchedCount === 0) {
-      return errorResponse(res, "User not found", 404);
+    // Sync Firebase custom claims so role stays in sync across services
+    const auth = getAuth();
+    try {
+      let targetUid = user.uid;
+
+      // Backfill uid for seeded/legacy users
+      if (!targetUid) {
+        const firebaseUser = await auth.getUserByEmail(user.email);
+        targetUid = firebaseUser.uid;
+        await usersCollection.updateOne(
+          { _id: userObjectId },
+          { $set: { uid: targetUid } }
+        );
+      }
+
+      await auth.setCustomUserClaims(targetUid, { role });
+    } catch (firebaseError) {
+      logger.error("Failed to sync user role to Firebase:", firebaseError);
+      return errorResponse(
+        res,
+        "Role updated in database but failed to sync with Firebase",
+        500,
+        firebaseError.message
+      );
     }
 
     return successResponse(
       res,
-      null,
+      { userId, role },
       `User role updated to '${role}' successfully`
     );
   } catch (error) {

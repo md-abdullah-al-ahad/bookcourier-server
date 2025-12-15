@@ -3,6 +3,7 @@ const logger = require("../utils/logger");
 
 let dbInstance = null;
 let client = null;
+let connectionPromise = null;
 
 // MongoDB connection options for connection pooling
 const options = {
@@ -18,27 +19,41 @@ const options = {
  */
 const connectDB = async () => {
   try {
-    const uri = process.env.MONGODB_URI;
-    const dbName = process.env.DB_NAME || "bookcourier";
-
-    if (!uri) {
-      throw new Error("MONGODB_URI is not defined in environment variables");
+    // If we already have an active connection, return it immediately
+    if (dbInstance) {
+      return dbInstance;
     }
 
-    // Create MongoDB client
-    client = new MongoClient(uri, options);
+    // Reuse an inflight connection attempt to avoid duplicate connections
+    if (!connectionPromise) {
+      connectionPromise = (async () => {
+        const uri = process.env.MONGODB_URI;
+        const dbName = process.env.DB_NAME || "bookcourier";
 
-    // Connect to MongoDB
-    await client.connect();
+        if (!uri) {
+          throw new Error("MONGODB_URI is not defined in environment variables");
+        }
 
-    // Get database instance
-    dbInstance = client.db(dbName);
+        // Create MongoDB client
+        client = new MongoClient(uri, options);
 
-    logger.success(`MongoDB connected successfully to database: ${dbName}`);
+        // Connect to MongoDB
+        await client.connect();
 
-    // Verify connection
-    await dbInstance.command({ ping: 1 });
-    logger.success("Database ping successful");
+        // Get database instance
+        dbInstance = client.db(dbName);
+
+        logger.success(`MongoDB connected successfully to database: ${dbName}`);
+
+        // Verify connection
+        await dbInstance.command({ ping: 1 });
+        logger.success("Database ping successful");
+
+        return dbInstance;
+      })();
+    }
+
+    return await connectionPromise;
   } catch (error) {
     logger.error("MongoDB connection error:", error);
     process.exit(1);
